@@ -4,7 +4,7 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** Cargo.toml, src/main.rs, src/lib.rs
-- **Commit:** PENDING
+- **Commit:** `be9e601d974c67b04b2722620395feb9b7beac1c`
 
 ## T-002 — Sprint 1
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
