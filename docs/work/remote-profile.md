@@ -3,7 +3,7 @@
 <!-- sprint-loop-remote-profile-v2 -->
 
 ```
-provider: local-only
+provider: github
 base: main
 work: dev
 mergePolicy: human-approve
