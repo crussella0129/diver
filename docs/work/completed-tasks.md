@@ -10,7 +10,7 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/model.rs
-- **Commit:** PENDING
+- **Commit:** `1179af10902fe2cf4d44f60b84702fef72bd45bd`
 
 ## T-003 — Sprint 1
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
