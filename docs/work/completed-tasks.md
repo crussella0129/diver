@@ -22,7 +22,7 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/parse.rs, tests/fixtures/sample_feed.xml, tests/fixtures/empty_feed.xml
-- **Commit:** PENDING
+- **Commit:** `e9b71401b60a7ea5054e4f00c4f3eb653aef2998`
 
 ## T-005 — Sprint 1
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
