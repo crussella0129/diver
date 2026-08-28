@@ -40,4 +40,4 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/main.rs
-- **Commit:** PENDING
+- **Commit:** `d16026e80bfbafe40226866d7795c02ede4e6ea1`
