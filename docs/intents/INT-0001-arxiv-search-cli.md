@@ -2,10 +2,10 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0001
-- **State:** active
+- **State:** realized
 - **Work evidence:** [T-001–T-007 build plan](../sprints/s1/sprint-plans/build-plan.md)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-001 completion](../work/completed-tasks.md#t-001--sprint-1), [T-007 completion](../work/completed-tasks.md#t-007--sprint-1)
+- **Code evidence:** [src/main.rs](../../src/main.rs), [src/client.rs](../../src/client.rs), [src/query.rs](../../src/query.rs), [src/parse.rs](../../src/parse.rs), [src/model.rs](../../src/model.rs), [src/display.rs](../../src/display.rs)
 - **Test evidence:** [Sprint 1 test report](../sprints/s1/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
@@ -70,3 +70,4 @@ project grows toward knowledge-extraction features.
 - 2026-08-28: created as `proposed`.
 - 2026-08-28: `proposed` → `planned`. Sprint 1 build plan covers all acceptance criteria.
 - 2026-08-28: `planned` → `active`. Sprint 1 build phase started.
+- 2026-08-28: `active` → `realized`. All 6 acceptance criteria verified; 14/14 tests pass, manual E2E confirmed.
