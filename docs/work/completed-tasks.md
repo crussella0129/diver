@@ -28,7 +28,7 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/client.rs
-- **Commit:** PENDING
+- **Commit:** `d36e0fbd86bf905a11254eb727655f3ab446ce2a`
 
 ## T-006 — Sprint 1
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
