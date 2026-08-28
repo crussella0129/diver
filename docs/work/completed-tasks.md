@@ -34,7 +34,7 @@
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/display.rs
-- **Commit:** PENDING
+- **Commit:** `d6f88797cfc66224efda74ae9f9fa470a73205f4`
 
 ## T-007 — Sprint 1
 - **Intent:** [INT-0001](../intents/INT-0001-arxiv-search-cli.md)
