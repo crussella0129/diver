@@ -112,4 +112,4 @@
 - **Intent:** [INT-0004](../intents/INT-0004-batch-collection.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/main.rs
-- **Commit:** PENDING
+- **Commit:** `c23792814169b2417dae8bbb9682418397db8a14`
