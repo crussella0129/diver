@@ -47,3 +47,9 @@
 - **Completed:** 2026-08-28
 - **Touched:** Cargo.toml, src/lib.rs
 - **Commit:** `4bf73b03ea1d099502a213aa5ac44b7e30a4e625`
+
+## T-009 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/fact.rs
+- **Commit:** PENDING
