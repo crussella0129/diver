@@ -59,3 +59,9 @@
 - **Completed:** 2026-08-28
 - **Touched:** src/store.rs
 - **Commit:** `931262fdb7758602692742c54fb6c1bc83240348`
+
+## T-011 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/client.rs
+- **Commit:** PENDING
