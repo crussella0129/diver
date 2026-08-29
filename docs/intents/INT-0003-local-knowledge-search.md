@@ -2,11 +2,11 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0003
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 3 build plan](../sprints/s3/sprint-plans/build-plan.md)
-- **Completion evidence:** none
-- **Code evidence:** none
-- **Test evidence:** none
+- **Completion evidence:** [Sprint 3 test report](../sprints/s3/sprint-tests/test-report.md), all 7 acceptance criteria verified
+- **Code evidence:** [store.rs](../../src/store.rs), [display.rs](../../src/display.rs), [main.rs](../../src/main.rs)
+- **Test evidence:** [Sprint 3 test report](../sprints/s3/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
 ## Intent
@@ -77,3 +77,4 @@ scale (hundreds to low thousands of papers) with zero configuration.
 ## Transition history
 - 2026-08-28: created as `proposed`.
 - 2026-08-28: `proposed` → `active` (Sprint 3 build plan attached, skipping planned since single-sprint intent).
+- 2026-08-29: `active` → `realized` (all 7 acceptance criteria verified by Sprint 3 test report).
