@@ -5,7 +5,7 @@
 - **State:** realized
 - **Work evidence:** [Sprint 4 build plan](../sprints/s4/sprint-plans/build-plan.md)
 - **Completion evidence:** [Sprint 4 completed tasks](../work/completed-tasks.md) (T-018 through T-019)
-- **Code evidence:** `src/display.rs`, `src/main.rs`
+- **Code evidence:** [src/display.rs](../../src/display.rs), [src/main.rs](../../src/main.rs)
 - **Test evidence:** [Sprint 4 test report](../sprints/s4/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
