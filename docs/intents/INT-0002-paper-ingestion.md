@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0002
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 2 build plan](../sprints/s2/sprint-plans/build-plan.md)
-- **Completion evidence:** none
-- **Code evidence:** none
-- **Test evidence:** none
-- **Documentation evidence:** none
+- **Completion evidence:** [Sprint 2 completed tasks](../work/completed-tasks.md) (T-008 through T-013)
+- **Code evidence:** src/fact.rs, src/store.rs, src/client.rs (fetch_by_id), src/display.rs (display_fact, display_fact_list), src/main.rs (ingest/inspect/list subcommands)
+- **Test evidence:** [Sprint 2 test report](../sprints/s2/sprint-tests/test-report.md)
+- **Documentation evidence:** [Sprint 2 research report](../sprints/s2/sprint-research/research-report.md)
 
 ## Intent
 
@@ -82,3 +82,4 @@ writes exist yet.
 - 2026-08-28: created as `proposed`.
 - 2026-08-28: `proposed` → `planned` (Sprint 2 build plan attached).
 - 2026-08-28: `planned` → `active` (Sprint 2 build phase started).
+- 2026-08-28: `active` → `realized` (all acceptance criteria verified, test report attached).
