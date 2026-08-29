@@ -101,3 +101,15 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/main.rs, tests/dive_pipeline.rs
 - **Commit:** `0e0c2f9c233b15c777b25f0b6260bb0d0b932292`
+
+## T-018 — (sprint 4)
+- **Intent:** [INT-0004](../intents/INT-0004-batch-collection.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/display.rs
+- **Commit:** `2be5a1b0e8993aac9a7b1f6bde9f6f2436ee4735`
+
+## T-019 — (sprint 4)
+- **Intent:** [INT-0004](../intents/INT-0004-batch-collection.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/main.rs
+- **Commit:** `c23792814169b2417dae8bbb9682418397db8a14`
