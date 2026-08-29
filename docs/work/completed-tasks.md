@@ -64,4 +64,4 @@
 - **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/client.rs
-- **Commit:** PENDING
+- **Commit:** `945ef52209a3d8c2163b12731d9d6324b9ca8ce3`
