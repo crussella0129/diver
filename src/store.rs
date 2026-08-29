@@ -47,38 +47,116 @@ impl Store {
                 source_url       TEXT NOT NULL,
                 arxiv_version    TEXT NOT NULL,
                 ingested_at      TEXT NOT NULL
-            );",
+            );
+            CREATE VIRTUAL TABLE IF NOT EXISTS source_facts_fts
+            USING fts5(arxiv_id, title, authors, summary, primary_category);",
             )
             .context("failed to initialize database schema")?;
+
+        self.backfill_fts()?;
+        Ok(())
+    }
+
+    fn backfill_fts(&self) -> Result<()> {
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM source_facts_fts", [], |row| {
+                row.get(0)
+            })
+            .context("failed to count FTS rows")?;
+
+        if count > 0 {
+            return Ok(());
+        }
+
+        let source_count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM source_facts", [], |row| row.get(0))
+            .context("failed to count source_facts rows")?;
+
+        if source_count == 0 {
+            return Ok(());
+        }
+
+        self.conn
+            .execute_batch(
+                "INSERT INTO source_facts_fts (arxiv_id, title, authors, summary, primary_category)
+                 SELECT arxiv_id, title, authors, summary, primary_category
+                 FROM source_facts;",
+            )
+            .context("failed to backfill FTS index")?;
+
         Ok(())
     }
 
     pub fn save(&self, fact: &SourceFact) -> Result<()> {
         let authors_json =
             serde_json::to_string(&fact.authors).context("failed to serialize authors")?;
+        let authors_text = fact.authors.join(", ");
 
         self.conn
-            .execute(
-                "INSERT OR REPLACE INTO source_facts
-             (arxiv_id, title, authors, summary, primary_category,
-              published, updated, pdf_url, source_url, arxiv_version, ingested_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                rusqlite::params![
-                    fact.arxiv_id,
-                    fact.title,
-                    authors_json,
-                    fact.summary,
-                    fact.primary_category,
-                    fact.published,
-                    fact.updated,
-                    fact.pdf_url,
-                    fact.source_url,
-                    fact.arxiv_version,
-                    fact.ingested_at,
-                ],
-            )
-            .context("failed to save source fact")?;
-        Ok(())
+            .execute_batch("BEGIN;")
+            .context("failed to begin transaction")?;
+
+        let result = (|| -> Result<()> {
+            self.conn
+                .execute(
+                    "INSERT OR REPLACE INTO source_facts
+                 (arxiv_id, title, authors, summary, primary_category,
+                  published, updated, pdf_url, source_url, arxiv_version, ingested_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    rusqlite::params![
+                        fact.arxiv_id,
+                        fact.title,
+                        authors_json,
+                        fact.summary,
+                        fact.primary_category,
+                        fact.published,
+                        fact.updated,
+                        fact.pdf_url,
+                        fact.source_url,
+                        fact.arxiv_version,
+                        fact.ingested_at,
+                    ],
+                )
+                .context("failed to save source fact")?;
+
+            self.conn
+                .execute(
+                    "DELETE FROM source_facts_fts WHERE arxiv_id = ?1",
+                    rusqlite::params![fact.arxiv_id],
+                )
+                .context("failed to delete old FTS entry")?;
+
+            self.conn
+                .execute(
+                    "INSERT INTO source_facts_fts (arxiv_id, title, authors, summary, primary_category)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                    rusqlite::params![
+                        fact.arxiv_id,
+                        fact.title,
+                        authors_text,
+                        fact.summary,
+                        fact.primary_category,
+                    ],
+                )
+                .context("failed to insert FTS entry")?;
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                self.conn
+                    .execute_batch("COMMIT;")
+                    .context("failed to commit transaction")?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK;");
+                Err(e)
+            }
+        }
     }
 
     pub fn get(&self, arxiv_id: &str) -> Result<Option<SourceFact>> {
@@ -266,5 +344,148 @@ mod tests {
         let store = Store::open_in_memory().unwrap();
         let facts = store.list().unwrap();
         assert!(facts.is_empty());
+    }
+
+    #[test]
+    fn test_save_populates_fts() {
+        let store = Store::open_in_memory().unwrap();
+        let fact = test_fact(
+            "2301.00001",
+            "Attention Is All You Need",
+            "2026-08-28T00:00:00Z",
+        );
+        store.save(&fact).unwrap();
+
+        let count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'attention'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_upsert_updates_fts() {
+        let store = Store::open_in_memory().unwrap();
+
+        let fact1 = test_fact(
+            "2301.00001",
+            "Original Unique Title",
+            "2026-08-28T00:00:00Z",
+        );
+        store.save(&fact1).unwrap();
+
+        let mut fact2 = test_fact(
+            "2301.00001",
+            "Replaced Different Title",
+            "2026-08-28T01:00:00Z",
+        );
+        fact2.summary = "New summary content.".to_string();
+        store.save(&fact2).unwrap();
+
+        let old_count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'original'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(old_count, 0);
+
+        let new_count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'replaced'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(new_count, 1);
+    }
+
+    #[test]
+    fn test_fts_indexes_multiple_fields() {
+        let store = Store::open_in_memory().unwrap();
+        let mut fact = test_fact("2301.00001", "Some Paper", "2026-08-28T00:00:00Z");
+        fact.authors = vec!["Vaswani".to_string(), "Shazeer".to_string()];
+        fact.primary_category = "cs.LG".to_string();
+        store.save(&fact).unwrap();
+
+        let by_author: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'vaswani'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(by_author, 1);
+
+        let by_category: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'cs'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(by_category, 1);
+    }
+
+    #[test]
+    fn test_init_schema_backfills_existing_facts() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS source_facts (
+                arxiv_id         TEXT PRIMARY KEY,
+                title            TEXT NOT NULL,
+                authors          TEXT NOT NULL,
+                summary          TEXT NOT NULL,
+                primary_category TEXT NOT NULL,
+                published        TEXT NOT NULL,
+                updated          TEXT NOT NULL,
+                pdf_url          TEXT NOT NULL,
+                source_url       TEXT NOT NULL,
+                arxiv_version    TEXT NOT NULL,
+                ingested_at      TEXT NOT NULL
+            );",
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO source_facts VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+            rusqlite::params![
+                "2301.00001",
+                "Pre-existing Paper About Transformers",
+                "[\"Alice\"]",
+                "A pre-existing summary.",
+                "cs.CL",
+                "2023-01-01T00:00:00Z",
+                "2023-01-01T00:00:00Z",
+                "http://arxiv.org/pdf/2301.00001",
+                "https://export.arxiv.org/api/query?id_list=2301.00001",
+                "v1",
+                "2026-08-28T00:00:00Z",
+            ],
+        )
+        .unwrap();
+
+        let store = Store { conn };
+        store.init_schema().unwrap();
+
+        let count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM source_facts_fts WHERE source_facts_fts MATCH 'transformers'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
     }
 }

@@ -77,3 +77,9 @@
 - **Completed:** 2026-08-28
 - **Touched:** src/main.rs, tests/ingest_pipeline.rs, tests/fixtures/error_feed.xml
 - **Commit:** `b9a40653e1b50d8ebe0a1ce546ae1d40cd4c1425`
+
+## T-014 — (sprint 3)
+- **Intent:** [INT-0003](../intents/INT-0003-local-knowledge-search.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** PENDING
