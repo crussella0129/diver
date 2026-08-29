@@ -130,7 +130,7 @@
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/model.rs, src/parse.rs
-- **Commit:** PENDING
+- **Commit:** `a10bcb80a4a6dba19fe2612bd43ff830db253e71`
 
 ## T-504 — (sprint 5)
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
