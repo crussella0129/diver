@@ -1,5 +1,6 @@
 use owo_colors::OwoColorize;
 
+use crate::fact::SourceFact;
 use crate::model::Paper;
 
 pub fn display_results(papers: &[Paper], total: u32) {
@@ -24,6 +25,58 @@ pub fn display_results(papers: &[Paper], total: u32) {
             format!("https://arxiv.org/abs/{}", paper.arxiv_id).underline()
         );
         println!();
+    }
+}
+
+pub fn display_fact(fact: &SourceFact) {
+    println!("{}", fact.title.bold());
+    println!("  {}", fact.authors.join(", ").dimmed());
+    println!();
+    println!("  {}", fact.summary);
+    println!();
+    println!(
+        "  {} | {}",
+        fact.primary_category.cyan(),
+        format!("https://arxiv.org/abs/{}", fact.arxiv_id).underline()
+    );
+    println!("  {} {}", "Version:".dimmed(), fact.arxiv_version);
+    println!("  {} {}", "Source:".dimmed(), fact.source_url);
+    println!("  {} {}", "Ingested:".dimmed(), fact.ingested_at);
+}
+
+pub fn display_fact_list(facts: &[SourceFact]) {
+    if facts.is_empty() {
+        println!("No ingested papers.");
+        return;
+    }
+
+    println!(
+        "{:<16} {:<52} {:<8} {}",
+        "ArXiv ID".bold(),
+        "Title".bold(),
+        "Category".bold(),
+        "Ingested".bold(),
+    );
+    println!("{}", "-".repeat(96));
+
+    for fact in facts {
+        let title = truncate_title(&fact.title, 50);
+        let date = &fact.ingested_at[..10.min(fact.ingested_at.len())];
+        println!(
+            "{:<16} {:<52} {:<8} {}",
+            fact.arxiv_id, title, fact.primary_category, date,
+        );
+    }
+
+    println!("\n{} paper(s) ingested.", facts.len());
+}
+
+fn truncate_title(text: &str, max_len: usize) -> String {
+    if text.len() <= max_len {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_len - 3).collect();
+        format!("{truncated}...")
     }
 }
 
@@ -83,5 +136,65 @@ mod tests {
         let shown = papers.len();
         let msg = format!("Showing {} of {} results.", shown, total);
         assert!(msg.contains("Showing 3 of 50 results."));
+    }
+
+    fn make_fact(id: &str, title: &str) -> SourceFact {
+        SourceFact {
+            arxiv_id: id.to_string(),
+            title: title.to_string(),
+            authors: vec!["Alice".to_string()],
+            summary: "A summary.".to_string(),
+            primary_category: "cs.CL".to_string(),
+            published: "2023-01-01T00:00:00Z".to_string(),
+            updated: "2023-01-01T00:00:00Z".to_string(),
+            pdf_url: format!("http://arxiv.org/pdf/{id}"),
+            source_url: format!("https://export.arxiv.org/api/query?id_list={id}"),
+            arxiv_version: "v1".to_string(),
+            ingested_at: "2026-08-28T12:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_display_fact_all_fields() {
+        let fact = make_fact("2301.00001", "Test Paper Title");
+        let mut buf = Vec::new();
+        use std::io::Write;
+        writeln!(buf, "{}", fact.title).unwrap();
+        writeln!(buf, "{}", fact.authors.join(", ")).unwrap();
+        writeln!(buf, "{}", fact.primary_category).unwrap();
+        writeln!(buf, "{}", fact.source_url).unwrap();
+        writeln!(buf, "{}", fact.arxiv_version).unwrap();
+        writeln!(buf, "{}", fact.ingested_at).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("Test Paper Title"));
+        assert!(output.contains("Alice"));
+        assert!(output.contains("cs.CL"));
+        assert!(output.contains("export.arxiv.org"));
+        assert!(output.contains("v1"));
+        assert!(output.contains("2026-08-28"));
+    }
+
+    #[test]
+    fn test_display_fact_list() {
+        let facts = vec![
+            make_fact("2301.00001", "First Paper"),
+            make_fact("2302.00002", "Second Paper"),
+        ];
+        let line_1 = format!(
+            "{:<16} {:<52} {:<8} {}",
+            facts[0].arxiv_id,
+            truncate_title(&facts[0].title, 50),
+            facts[0].primary_category,
+            &facts[0].ingested_at[..10],
+        );
+        assert!(line_1.contains("2301.00001"));
+        assert!(line_1.contains("First Paper"));
+        assert!(line_1.contains("cs.CL"));
+    }
+
+    #[test]
+    fn test_display_fact_list_empty() {
+        let facts: Vec<SourceFact> = vec![];
+        assert!(facts.is_empty());
     }
 }

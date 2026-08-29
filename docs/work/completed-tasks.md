@@ -41,3 +41,39 @@
 - **Completed:** 2026-08-28
 - **Touched:** src/main.rs
 - **Commit:** `d16026e80bfbafe40226866d7795c02ede4e6ea1`
+
+## T-008 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** Cargo.toml, src/lib.rs
+- **Commit:** `4bf73b03ea1d099502a213aa5ac44b7e30a4e625`
+
+## T-009 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/fact.rs
+- **Commit:** `c574ce185bb78e067b0215f87efd96dd3f6d62c9`
+
+## T-010 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/store.rs
+- **Commit:** `931262fdb7758602692742c54fb6c1bc83240348`
+
+## T-011 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/client.rs
+- **Commit:** `945ef52209a3d8c2163b12731d9d6324b9ca8ce3`
+
+## T-012 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/display.rs
+- **Commit:** `c069c4e0d38e4395e30daeaa811e2a4b54415460`
+
+## T-013 — (sprint 2)
+- **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
+- **Completed:** 2026-08-28
+- **Touched:** src/main.rs, tests/ingest_pipeline.rs, tests/fixtures/error_feed.xml
+- **Commit:** `b9a40653e1b50d8ebe0a1ce546ae1d40cd4c1425`
