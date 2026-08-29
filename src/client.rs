@@ -106,6 +106,7 @@ mod tests {
                 authors: vec![],
                 summary: String::new(),
                 primary_category: String::new(),
+                categories: vec![],
                 published: String::new(),
                 updated: String::new(),
                 arxiv_id: String::new(),
