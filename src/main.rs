@@ -44,6 +44,16 @@ enum Commands {
 
     /// List all ingested papers
     List,
+
+    /// Search your local knowledge base
+    Dive {
+        /// Search query
+        query: String,
+
+        /// Maximum number of results to return
+        #[arg(long, default_value_t = 10)]
+        max_results: u32,
+    },
 }
 
 #[derive(Clone, ValueEnum)]
@@ -112,6 +122,12 @@ async fn main() -> Result<()> {
             let store = Store::open()?;
             let facts = store.list()?;
             display::display_fact_list(&facts);
+        }
+
+        Commands::Dive { query, max_results } => {
+            let store = Store::open()?;
+            let results = store.search(&query, max_results)?;
+            display::display_dive_results(&results);
         }
     }
 

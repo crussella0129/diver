@@ -95,3 +95,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/display.rs
 - **Commit:** `91fe4531483dcb965330337bb3fc54cd397c08e8`
+
+## T-017 — (sprint 3)
+- **Intent:** [INT-0003](../intents/INT-0003-local-knowledge-search.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/main.rs, tests/dive_pipeline.rs
+- **Commit:** PENDING
