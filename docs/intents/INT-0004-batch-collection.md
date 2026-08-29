@@ -6,7 +6,7 @@
 - **Work evidence:** [Sprint 4 build plan](../sprints/s4/sprint-plans/build-plan.md)
 - **Completion evidence:** none
 - **Code evidence:** none
-- **Test evidence:** none
+- **Test evidence:** [Sprint 4 test report](../sprints/s4/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
 ## Intent
