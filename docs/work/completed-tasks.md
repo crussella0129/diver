@@ -106,7 +106,7 @@
 - **Intent:** [INT-0004](../intents/INT-0004-batch-collection.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/display.rs
-- **Commit:** PENDING
+- **Commit:** `2be5a1b0e8993aac9a7b1f6bde9f6f2436ee4735`
 
 ## T-019 — (sprint 4)
 - **Intent:** [INT-0004](../intents/INT-0004-batch-collection.md)
