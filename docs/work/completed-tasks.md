@@ -124,7 +124,7 @@
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/id.rs, src/lib.rs
-- **Commit:** PENDING
+- **Commit:** `9b93150f46373387b88e511391ffa53161f15096`
 
 ## T-503 — (sprint 5)
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
