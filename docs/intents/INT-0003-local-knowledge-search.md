@@ -4,7 +4,7 @@
 - **Intent ID:** INT-0003
 - **State:** realized
 - **Work evidence:** [Sprint 3 build plan](../sprints/s3/sprint-plans/build-plan.md)
-- **Completion evidence:** [Sprint 3 test report](../sprints/s3/sprint-tests/test-report.md), all 7 acceptance criteria verified
+- **Completion evidence:** [Sprint 3 completed tasks](../work/completed-tasks.md) (T-014 through T-017)
 - **Code evidence:** [store.rs](../../src/store.rs), [display.rs](../../src/display.rs), [main.rs](../../src/main.rs)
 - **Test evidence:** [Sprint 3 test report](../sprints/s3/sprint-tests/test-report.md)
 - **Documentation evidence:** none
