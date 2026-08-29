@@ -160,4 +160,4 @@
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
 - **Completed:** 2026-08-29
 - **Touched:** docs/SUMMARY.md, docs/intents/README.md, README.md, tests/ingest_pipeline.rs, tests/dive_pipeline.rs, src/client.rs
-- **Commit:** PENDING
+- **Commit:** `a82da805c7f6caf882fba2085858afee39a9c1e7`
