@@ -2,6 +2,7 @@ use owo_colors::OwoColorize;
 
 use crate::fact::SourceFact;
 use crate::model::Paper;
+use crate::store::SearchResult;
 
 pub fn display_results(papers: &[Paper], total: u32) {
     if papers.is_empty() {
@@ -69,6 +70,26 @@ pub fn display_fact_list(facts: &[SourceFact]) {
     }
 
     println!("\n{} paper(s) ingested.", facts.len());
+}
+
+pub fn display_dive_results(results: &[SearchResult]) {
+    if results.is_empty() {
+        println!("No matching papers found.");
+        return;
+    }
+
+    for (i, result) in results.iter().enumerate() {
+        println!("{}", format!("[{}]", i + 1).dimmed());
+        println!("  {}", result.title.bold());
+        println!("  {}", result.authors.join(", ").dimmed());
+        println!("  {}", truncate_abstract(&result.summary, 200));
+        println!(
+            "  {} | {}",
+            result.primary_category.cyan(),
+            format!("https://arxiv.org/abs/{}", result.arxiv_id).underline()
+        );
+        println!();
+    }
 }
 
 fn truncate_title(text: &str, max_len: usize) -> String {
@@ -196,5 +217,46 @@ mod tests {
     fn test_display_fact_list_empty() {
         let facts: Vec<SourceFact> = vec![];
         assert!(facts.is_empty());
+    }
+
+    fn make_search_result(id: &str, title: &str) -> SearchResult {
+        SearchResult {
+            arxiv_id: id.to_string(),
+            title: title.to_string(),
+            authors: vec!["Alice".to_string(), "Bob".to_string()],
+            summary: "A summary about attention mechanisms.".to_string(),
+            primary_category: "cs.CL".to_string(),
+            rank: -1.0,
+        }
+    }
+
+    #[test]
+    fn test_display_dive_results() {
+        let results = vec![
+            make_search_result("2301.00001", "First Result Paper"),
+            make_search_result("2302.00002", "Second Result Paper"),
+        ];
+
+        let mut buf = Vec::new();
+        use std::io::Write;
+        for (i, r) in results.iter().enumerate() {
+            writeln!(buf, "[{}]", i + 1).unwrap();
+            writeln!(buf, "  {}", r.title).unwrap();
+            writeln!(buf, "  {}", r.authors.join(", ")).unwrap();
+            writeln!(buf, "  {}", r.primary_category).unwrap();
+            writeln!(buf, "  https://arxiv.org/abs/{}", r.arxiv_id).unwrap();
+        }
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("First Result Paper"));
+        assert!(output.contains("Second Result Paper"));
+        assert!(output.contains("2301.00001"));
+        assert!(output.contains("2302.00002"));
+        assert!(output.contains("cs.CL"));
+    }
+
+    #[test]
+    fn test_display_dive_results_empty() {
+        let results: Vec<SearchResult> = vec![];
+        assert!(results.is_empty());
     }
 }
