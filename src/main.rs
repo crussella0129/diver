@@ -59,8 +59,8 @@ enum Commands {
         sort_by: SortOption,
     },
 
-    /// Search your local knowledge base
-    Dive {
+    /// Search your local corpus
+    Find {
         /// Search query
         query: String,
 
@@ -127,7 +127,10 @@ async fn main() -> Result<()> {
             let store = Store::open()?;
 
             match store.get(&arxiv_id)? {
-                Some(fact) => display::display_fact(&fact),
+                Some(fact) => {
+                    let versions = store.get_versions(&arxiv_id)?;
+                    display::display_fact(&fact, &versions);
+                }
                 None => bail!("Paper not found: {arxiv_id}"),
             }
         }
@@ -176,7 +179,7 @@ async fn main() -> Result<()> {
             display::display_collect_summary(new_count, updated_count);
         }
 
-        Commands::Dive { query, max_results } => {
+        Commands::Find { query, max_results } => {
             let store = Store::open()?;
             let results = store.search(&query, max_results)?;
             display::display_dive_results(&results);
