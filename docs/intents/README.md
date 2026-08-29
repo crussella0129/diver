@@ -10,4 +10,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0002](INT-0002-paper-ingestion.md) | Paper ingestion | realized |
 | [INT-0003](INT-0003-local-knowledge-search.md) | Local knowledge search | realized |
 | [INT-0004](INT-0004-batch-collection.md) | Batch collection | realized |
-| [INT-0005](INT-0005-harden-factual-substrate.md) | Harden factual substrate | planned |
+| [INT-0005](INT-0005-harden-factual-substrate.md) | Harden factual substrate | realized |
