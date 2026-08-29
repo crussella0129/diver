@@ -76,4 +76,4 @@
 - **Intent:** [INT-0002](../intents/INT-0002-paper-ingestion.md)
 - **Completed:** 2026-08-28
 - **Touched:** src/main.rs, tests/ingest_pipeline.rs, tests/fixtures/error_feed.xml
-- **Commit:** PENDING
+- **Commit:** `b9a40653e1b50d8ebe0a1ce546ae1d40cd4c1425`
