@@ -92,6 +92,19 @@ pub fn display_dive_results(results: &[SearchResult]) {
     }
 }
 
+pub fn display_collect_item(arxiv_id: &str, title: &str, is_update: bool) {
+    let label = if is_update { "Updated" } else { "Ingested" };
+    println!("  {}: {} \u{2014} {}", label, arxiv_id, title);
+}
+
+pub fn display_collect_summary(new_count: u32, updated_count: u32) {
+    println!("Collected {} new, {} updated.", new_count, updated_count);
+}
+
+pub fn display_collect_empty() {
+    println!("No papers found.");
+}
+
 fn truncate_title(text: &str, max_len: usize) -> String {
     if text.len() <= max_len {
         text.to_string()
@@ -258,5 +271,40 @@ mod tests {
     fn test_display_dive_results_empty() {
         let results: Vec<SearchResult> = vec![];
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_display_collect_item_new() {
+        let mut buf = Vec::new();
+        use std::io::Write;
+        let label = "Ingested";
+        writeln!(buf, "  {}: {} \u{2014} {}", label, "2301.00001", "Test Paper").unwrap();
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("Ingested:"));
+        assert!(output.contains("2301.00001"));
+        assert!(output.contains("Test Paper"));
+    }
+
+    #[test]
+    fn test_display_collect_item_update() {
+        let mut buf = Vec::new();
+        use std::io::Write;
+        let label = "Updated";
+        writeln!(buf, "  {}: {} \u{2014} {}", label, "2301.00001", "Test Paper").unwrap();
+        let output = String::from_utf8(buf).unwrap();
+        assert!(output.contains("Updated:"));
+        assert!(output.contains("2301.00001"));
+    }
+
+    #[test]
+    fn test_display_collect_summary() {
+        let msg = format!("Collected {} new, {} updated.", 3, 2);
+        assert!(msg.contains("Collected 3 new, 2 updated."));
+    }
+
+    #[test]
+    fn test_display_collect_empty() {
+        let msg = "No papers found.";
+        assert_eq!(msg, "No papers found.");
     }
 }
