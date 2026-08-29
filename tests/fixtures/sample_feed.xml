@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"
+      xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <title>ArXiv Query: search_query=all:attention</title>
+  <id>http://arxiv.org/api/query</id>
+  <opensearch:totalResults>12345</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <opensearch:itemsPerPage>3</opensearch:itemsPerPage>
+  <entry>
+    <id>http://arxiv.org/abs/2301.00001v1</id>
+    <updated>2023-01-01T00:00:00Z</updated>
+    <published>2023-01-01T00:00:00Z</published>
+    <title>Attention Is All You Need Revisited</title>
+    <summary>We revisit the transformer architecture and propose improvements to the self-attention mechanism that reduce computational complexity while maintaining model quality across a range of natural language processing tasks.</summary>
+    <author><name>Alice Smith</name></author>
+    <author><name>Bob Jones</name></author>
+    <link href="http://arxiv.org/abs/2301.00001v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2301.00001v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2302.00002v2</id>
+    <updated>2023-02-15T12:00:00Z</updated>
+    <published>2023-02-01T00:00:00Z</published>
+    <title>Efficient Multi-Head Attention for Long Sequences</title>
+    <summary>This paper introduces a novel multi-head attention variant that scales linearly with sequence length, enabling the processing of documents up to 100k tokens.</summary>
+    <author><name>Carol White</name></author>
+    <link href="http://arxiv.org/abs/2302.00002v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2302.00002v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2303.00003v1</id>
+    <updated>2023-03-01T00:00:00Z</updated>
+    <published>2023-03-01T00:00:00Z</published>
+    <title>Cross-Attention Mechanisms in Vision-Language Models</title>
+    <summary>We study cross-attention patterns in vision-language models and show that sparse attention achieves comparable performance to dense attention with significantly reduced memory usage and faster inference times on standard benchmarks.</summary>
+    <author><name>Dave Brown</name></author>
+    <author><name>Eve Green</name></author>
+    <author><name>Frank Lee</name></author>
+    <link href="http://arxiv.org/abs/2303.00003v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2303.00003v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+</feed>
