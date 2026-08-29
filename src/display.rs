@@ -278,7 +278,12 @@ mod tests {
         let mut buf = Vec::new();
         use std::io::Write;
         let label = "Ingested";
-        writeln!(buf, "  {}: {} \u{2014} {}", label, "2301.00001", "Test Paper").unwrap();
+        writeln!(
+            buf,
+            "  {}: {} \u{2014} {}",
+            label, "2301.00001", "Test Paper"
+        )
+        .unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Ingested:"));
         assert!(output.contains("2301.00001"));
@@ -290,7 +295,12 @@ mod tests {
         let mut buf = Vec::new();
         use std::io::Write;
         let label = "Updated";
-        writeln!(buf, "  {}: {} \u{2014} {}", label, "2301.00001", "Test Paper").unwrap();
+        writeln!(
+            buf,
+            "  {}: {} \u{2014} {}",
+            label, "2301.00001", "Test Paper"
+        )
+        .unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Updated:"));
         assert!(output.contains("2301.00001"));

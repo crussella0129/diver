@@ -45,6 +45,20 @@ enum Commands {
     /// List all ingested papers
     List,
 
+    /// Search ArXiv and batch-ingest matching papers
+    Collect {
+        /// Search query
+        query: String,
+
+        /// Maximum number of results to collect
+        #[arg(long, default_value_t = 10)]
+        max_results: u32,
+
+        /// Sort results by
+        #[arg(long, default_value = "relevance")]
+        sort_by: SortOption,
+    },
+
     /// Search your local knowledge base
     Dive {
         /// Search query
@@ -122,6 +136,44 @@ async fn main() -> Result<()> {
             let store = Store::open()?;
             let facts = store.list()?;
             display::display_fact_list(&facts);
+        }
+
+        Commands::Collect {
+            query,
+            max_results,
+            sort_by,
+        } => {
+            let qb = QueryBuilder::new(&query)
+                .max_results(max_results)
+                .sort_by(sort_by.into());
+
+            let source_url = qb.build();
+            let client = ArxivClient::new()?;
+            let result = client.search(&qb).await?;
+
+            if result.papers.is_empty() {
+                display::display_collect_empty();
+                return Ok(());
+            }
+
+            let store = Store::open()?;
+            let mut new_count: u32 = 0;
+            let mut updated_count: u32 = 0;
+
+            for paper in result.papers {
+                let fact = SourceFact::from_paper(paper, source_url.clone());
+                let is_update = store.exists(&fact.arxiv_id)?;
+                display::display_collect_item(&fact.arxiv_id, &fact.title, is_update);
+                store.save(&fact)?;
+
+                if is_update {
+                    updated_count += 1;
+                } else {
+                    new_count += 1;
+                }
+            }
+
+            display::display_collect_summary(new_count, updated_count);
         }
 
         Commands::Dive { query, max_results } => {
