@@ -2,10 +2,10 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0004
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 4 build plan](../sprints/s4/sprint-plans/build-plan.md)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [Sprint 4 completed tasks](../work/completed-tasks.md) (T-018 through T-019)
+- **Code evidence:** `src/display.rs`, `src/main.rs`
 - **Test evidence:** [Sprint 4 test report](../sprints/s4/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
@@ -76,3 +76,5 @@ and progress display.
 
 ## Transition history
 - 2026-08-29: created as `proposed`.
+- 2026-08-29: `proposed` → `active` (Sprint 4 plan finalized).
+- 2026-08-29: `active` → `realized` (Sprint 4 complete, all AC verified).
