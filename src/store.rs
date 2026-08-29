@@ -3,6 +3,16 @@ use rusqlite::Connection;
 
 use crate::fact::SourceFact;
 
+#[derive(Debug, Clone)]
+pub struct SearchResult {
+    pub arxiv_id: String,
+    pub title: String,
+    pub authors: Vec<String>,
+    pub summary: String,
+    pub primary_category: String,
+    pub rank: f64,
+}
+
 pub struct Store {
     conn: Connection,
 }
@@ -252,6 +262,48 @@ impl Store {
             .context("failed to check existence")?;
         Ok(count > 0)
     }
+
+    pub fn search(&self, query: &str, max_results: u32) -> Result<Vec<SearchResult>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT f.arxiv_id, f.title, sf.authors, f.summary, f.primary_category, f.rank
+                 FROM source_facts_fts f
+                 JOIN source_facts sf ON sf.arxiv_id = f.arxiv_id
+                 WHERE source_facts_fts MATCH ?1
+                 ORDER BY f.rank
+                 LIMIT ?2",
+            )
+            .context("failed to prepare search query")?;
+
+        let rows = stmt
+            .query_map(rusqlite::params![query, max_results], |row| {
+                let authors_json: String = row.get(2)?;
+                let authors: Vec<String> = serde_json::from_str(&authors_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        2,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
+
+                Ok(SearchResult {
+                    arxiv_id: row.get(0)?,
+                    title: row.get(1)?,
+                    authors,
+                    summary: row.get(3)?,
+                    primary_category: row.get(4)?,
+                    rank: row.get(5)?,
+                })
+            })
+            .context("failed to execute search query")?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row.context("failed to read search result")?);
+        }
+        Ok(results)
+    }
 }
 
 #[cfg(test)]
@@ -487,5 +539,112 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1);
+    }
+
+    fn search_fact(id: &str, title: &str, summary: &str) -> SourceFact {
+        SourceFact {
+            arxiv_id: id.to_string(),
+            title: title.to_string(),
+            authors: vec!["Author".to_string()],
+            summary: summary.to_string(),
+            primary_category: "cs.CL".to_string(),
+            published: "2023-01-01T00:00:00Z".to_string(),
+            updated: "2023-01-01T00:00:00Z".to_string(),
+            pdf_url: format!("http://arxiv.org/pdf/{id}"),
+            source_url: format!("https://export.arxiv.org/api/query?id_list={id}"),
+            arxiv_version: "v1".to_string(),
+            ingested_at: "2026-08-28T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_search_ranked_results() {
+        let store = Store::open_in_memory().unwrap();
+
+        store
+            .save(&search_fact(
+                "0001",
+                "Attention Mechanisms in Neural Networks",
+                "This paper studies convolutional approaches.",
+            ))
+            .unwrap();
+        store
+            .save(&search_fact(
+                "0002",
+                "Recurrent Models for Sequences",
+                "We explore attention-based decoding strategies.",
+            ))
+            .unwrap();
+        store
+            .save(&search_fact(
+                "0003",
+                "Attention Is All You Need",
+                "We propose attention mechanisms for sequence transduction.",
+            ))
+            .unwrap();
+
+        let results = store.search("attention", 10).unwrap();
+        assert!(!results.is_empty());
+        assert!(results.len() <= 3);
+
+        let ids: Vec<&str> = results.iter().map(|r| r.arxiv_id.as_str()).collect();
+        assert!(ids.contains(&"0001"));
+        assert!(ids.contains(&"0003"));
+    }
+
+    #[test]
+    fn test_search_no_results() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save(&search_fact("0001", "Some Paper", "About something."))
+            .unwrap();
+
+        let results = store.search("xyznonexistent", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_max_results() {
+        let store = Store::open_in_memory().unwrap();
+
+        for i in 1..=5 {
+            store
+                .save(&search_fact(
+                    &format!("000{i}"),
+                    &format!("Test Paper {i}"),
+                    "Testing the search functionality.",
+                ))
+                .unwrap();
+        }
+
+        let results = store.search("test", 2).unwrap();
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_search_phrase() {
+        let store = Store::open_in_memory().unwrap();
+
+        store
+            .save(&search_fact(
+                "0001",
+                "Attention Mechanism Design",
+                "We study attention mechanism patterns.",
+            ))
+            .unwrap();
+        store
+            .save(&search_fact(
+                "0002",
+                "Mechanism of Action",
+                "Attention to detail is important.",
+            ))
+            .unwrap();
+
+        let results = store.search("\"attention mechanism\"", 10).unwrap();
+        assert!(!results.is_empty());
+        for r in &results {
+            let combined = format!("{} {}", r.title, r.summary).to_lowercase();
+            assert!(combined.contains("attention mechanism"));
+        }
     }
 }

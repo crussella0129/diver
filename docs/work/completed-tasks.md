@@ -83,3 +83,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/store.rs
 - **Commit:** `a15279d465ef23129b1eb24c3549821121a93d42`
+
+## T-015 — (sprint 3)
+- **Intent:** [INT-0003](../intents/INT-0003-local-knowledge-search.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** PENDING
