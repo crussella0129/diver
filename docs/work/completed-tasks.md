@@ -118,7 +118,7 @@
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
 - **Completed:** 2026-08-29
 - **Touched:** taxonomy/arxiv_categories.json
-- **Commit:** PENDING
+- **Commit:** `c2d8e93d141daf1cc99bada17586f36993efbb9b`
 
 ## T-502 — (sprint 5)
 - **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
