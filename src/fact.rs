@@ -84,8 +84,7 @@ fn parse_category_lenient(code: &str) -> ArxivCategory {
             "diver: warning: primary category '{}' not in taxonomy snapshot, using unknown placeholder",
             code
         );
-        // Safe to unwrap: "cs.OH" is always valid in the taxonomy.
-        ArxivCategory::parse("cs.OH").expect("cs.OH must be in taxonomy")
+        ArxivCategory::unknown(code)
     })
 }
 

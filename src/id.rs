@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use std::fmt;
+use std::sync::OnceLock;
 
 /// Embedded arXiv category taxonomy snapshot.
 /// Sourced from <https://arxiv.org/category_taxonomy> on 2026-08-29.
@@ -49,9 +50,11 @@ impl ArxivCategory {
     /// Parse and validate an arXiv category code against the embedded taxonomy.
     /// Returns `Err` if the code is not in the taxonomy.
     pub fn parse(code: &str) -> Result<Self> {
-        // Lazy-parsed: look up the code in the embedded JSON.
-        let taxonomy: serde_json::Value = serde_json::from_str(TAXONOMY_JSON)
-            .expect("bundled taxonomy JSON is malformed — this is a compile-time bug");
+        if code.starts_with('_') {
+            bail!("'{}' is a metadata key, not an arXiv category", code);
+        }
+
+        let taxonomy = Self::taxonomy();
 
         let entry = match taxonomy.get(code) {
             Some(e) => e,
@@ -74,6 +77,23 @@ impl ArxivCategory {
             code: code.to_string(),
             name,
             group,
+        })
+    }
+
+    /// Build a placeholder for a category code not in the taxonomy snapshot.
+    pub fn unknown(code: &str) -> Self {
+        Self {
+            code: code.to_string(),
+            name: format!("Unknown ({code})"),
+            group: String::new(),
+        }
+    }
+
+    fn taxonomy() -> &'static serde_json::Value {
+        static TAXONOMY: OnceLock<serde_json::Value> = OnceLock::new();
+        TAXONOMY.get_or_init(|| {
+            serde_json::from_str(TAXONOMY_JSON)
+                .expect("bundled taxonomy JSON is malformed — this is a compile-time bug")
         })
     }
 
@@ -117,6 +137,22 @@ mod tests {
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("not in the taxonomy"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_taxonomy_rejects_meta_key() {
+        let result = ArxivCategory::parse("_meta");
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("metadata key"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_unknown_preserves_code() {
+        let cat = ArxivCategory::unknown("astro-ph.IM");
+        assert_eq!(cat.code(), "astro-ph.IM");
+        assert!(cat.name().contains("Unknown"), "got: {}", cat.name());
+        assert!(cat.name().contains("astro-ph.IM"), "got: {}", cat.name());
     }
 
     #[test]

@@ -46,6 +46,7 @@ impl Store {
         self.conn
             .execute_batch(
                 "PRAGMA journal_mode=WAL;
+                PRAGMA foreign_keys=ON;
 
                 CREATE TABLE IF NOT EXISTS papers (
                     id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +121,6 @@ impl Store {
     pub fn save(&self, fact: &SourceFact) -> Result<()> {
         let authors_json =
             serde_json::to_string(&fact.authors).context("failed to serialize authors")?;
-        let authors_text = fact.authors.join(", ");
         let categories_json = fact.categories_json();
 
         self.conn
@@ -145,13 +145,23 @@ impl Store {
                 )
                 .context("failed to retrieve paper_id")?;
 
-            // Insert the version (idempotent: ignore duplicate).
             self.conn
                 .execute(
-                    "INSERT OR IGNORE INTO paper_versions
+                    "INSERT INTO paper_versions
                      (paper_id, version, title, authors, summary, primary_category,
                       categories, published, updated, pdf_url, source_url, ingested_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                     ON CONFLICT(paper_id, version) DO UPDATE SET
+                       title = excluded.title,
+                       authors = excluded.authors,
+                       summary = excluded.summary,
+                       primary_category = excluded.primary_category,
+                       categories = excluded.categories,
+                       published = excluded.published,
+                       updated = excluded.updated,
+                       pdf_url = excluded.pdf_url,
+                       source_url = excluded.source_url,
+                       ingested_at = excluded.ingested_at",
                     rusqlite::params![
                         paper_id,
                         fact.arxiv_version,
@@ -167,9 +177,26 @@ impl Store {
                         fact.ingested_at,
                     ],
                 )
-                .context("failed to insert paper_version")?;
+                .context("failed to upsert paper_version")?;
 
-            // Refresh FTS for this paper (always reflect latest version).
+            // Refresh FTS using the latest version's data (not the incoming fact,
+            // which may be an older version being re-ingested).
+            let (fts_title, fts_authors_json, fts_summary, fts_category): (String, String, String, String) = self
+                .conn
+                .query_row(
+                    "SELECT pv.title, pv.authors, pv.summary, pv.primary_category
+                     FROM paper_versions pv
+                     WHERE pv.paper_id = ?1
+                     ORDER BY pv.ingested_at DESC
+                     LIMIT 1",
+                    rusqlite::params![paper_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .context("failed to query latest version for FTS")?;
+
+            let fts_authors: Vec<String> = serde_json::from_str(&fts_authors_json).unwrap_or_default();
+            let fts_authors_text = fts_authors.join(", ");
+
             self.conn
                 .execute(
                     "DELETE FROM paper_versions_fts WHERE arxiv_id = ?1",
@@ -183,10 +210,10 @@ impl Store {
                      VALUES (?1, ?2, ?3, ?4, ?5)",
                     rusqlite::params![
                         fact.arxiv_id,
-                        fact.title,
-                        authors_text,
-                        fact.summary,
-                        fact.primary_category.code(),
+                        fts_title,
+                        fts_authors_text,
+                        fts_summary,
+                        fts_category,
                     ],
                 )
                 .context("failed to insert FTS entry")?;
@@ -275,13 +302,12 @@ impl Store {
             .context("failed to prepare list query")?;
 
         let facts = stmt
-            .query_map([], |row| Ok(row_to_fact_raw(row)))
+            .query_map([], |row| row_to_fact(row))
             .context("failed to execute list query")?;
 
         let mut result = Vec::new();
         for fact_result in facts {
-            let raw = fact_result.context("failed to read paper row")?;
-            result.push(raw.context("failed to parse paper row")??);
+            result.push(fact_result.context("failed to read paper row")?);
         }
         Ok(result)
     }
@@ -302,7 +328,7 @@ impl Store {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT f.arxiv_id, f.title, sf.authors, f.summary, f.primary_category, f.rank
+                "SELECT p.arxiv_id, sf.title, sf.authors, sf.summary, sf.primary_category, f.rank
                  FROM paper_versions_fts f
                  JOIN papers p ON p.arxiv_id = f.arxiv_id
                  JOIN paper_versions sf ON sf.paper_id = p.id
@@ -380,16 +406,14 @@ fn row_to_fact_raw(row: &rusqlite::Row<'_>) -> rusqlite::Result<Result<SourceFac
             .unwrap_or_default();
 
         let primary_category = crate::id::ArxivCategory::parse(&primary_category_code)
-            .unwrap_or_else(|_| {
-                crate::id::ArxivCategory::parse("cs.OH").expect("cs.OH must be in taxonomy")
-            });
+            .unwrap_or_else(|_| crate::id::ArxivCategory::unknown(&primary_category_code));
 
         let mut categories: Vec<crate::id::ArxivCategory> = Vec::new();
         for code in &category_codes {
-            if let Ok(cat) = crate::id::ArxivCategory::parse(code) {
-                if !categories.iter().any(|c| c.code() == cat.code()) {
-                    categories.push(cat);
-                }
+            let cat = crate::id::ArxivCategory::parse(code)
+                .unwrap_or_else(|_| crate::id::ArxivCategory::unknown(code));
+            if !categories.iter().any(|c| c.code() == cat.code()) {
+                categories.push(cat);
             }
         }
         if categories.is_empty() {
@@ -475,11 +499,28 @@ mod tests {
 
         let fact_v1 = test_fact("2301.00001", "v1", "Some Title", "2026-08-28T00:00:00Z");
         store.save(&fact_v1).unwrap();
-        store.save(&fact_v1).unwrap();  // second save of same version
+        store.save(&fact_v1).unwrap();
 
         let versions = store.get_versions("2301.00001").unwrap();
         assert_eq!(versions.len(), 1);
         assert_eq!(versions[0], "v1");
+    }
+
+    #[test]
+    fn test_store_metadata_correction_applied() {
+        let store = Store::open_in_memory().unwrap();
+
+        let fact = test_fact("2301.00001", "v1", "Original Title", "2026-08-28T00:00:00Z");
+        store.save(&fact).unwrap();
+
+        let corrected = test_fact("2301.00001", "v1", "Corrected Title", "2026-08-28T01:00:00Z");
+        store.save(&corrected).unwrap();
+
+        let retrieved = store.get("2301.00001").unwrap().unwrap();
+        assert_eq!(retrieved.title, "Corrected Title");
+
+        let versions = store.get_versions("2301.00001").unwrap();
+        assert_eq!(versions.len(), 1);
     }
 
     #[test]
