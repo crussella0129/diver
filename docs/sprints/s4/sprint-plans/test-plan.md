@@ -1,4 +1,5 @@
 # Sprint 4 Test Plan
+<!-- Finalized - DO NOT EDIT -->
 
 **Status:** finalized
 

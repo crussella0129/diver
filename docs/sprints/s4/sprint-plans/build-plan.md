@@ -1,4 +1,5 @@
 # Sprint 4 Build Plan
+<!-- Finalized - DO NOT EDIT -->
 
 **Status:** finalized
 **Sprint goal:** Batch collection with `diver collect`
