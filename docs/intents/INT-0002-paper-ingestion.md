@@ -5,7 +5,7 @@
 - **State:** realized
 - **Work evidence:** [Sprint 2 build plan](../sprints/s2/sprint-plans/build-plan.md)
 - **Completion evidence:** [Sprint 2 completed tasks](../work/completed-tasks.md) (T-008 through T-013)
-- **Code evidence:** src/fact.rs, src/store.rs, src/client.rs (fetch_by_id), src/display.rs (display_fact, display_fact_list), src/main.rs (ingest/inspect/list subcommands)
+- **Code evidence:** [fact.rs](../../src/fact.rs), [store.rs](../../src/store.rs), [client.rs](../../src/client.rs), [display.rs](../../src/display.rs), [main.rs](../../src/main.rs)
 - **Test evidence:** [Sprint 2 test report](../sprints/s2/sprint-tests/test-report.md)
 - **Documentation evidence:** [Sprint 2 research report](../sprints/s2/sprint-research/research-report.md)
 
