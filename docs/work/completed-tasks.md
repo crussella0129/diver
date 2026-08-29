@@ -113,3 +113,51 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/main.rs
 - **Commit:** `c23792814169b2417dae8bbb9682418397db8a14`
+
+## T-501 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** taxonomy/arxiv_categories.json
+- **Commit:** `c2d8e93d141daf1cc99bada17586f36993efbb9b`
+
+## T-502 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/id.rs, src/lib.rs
+- **Commit:** `9b93150f46373387b88e511391ffa53161f15096`
+
+## T-503 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/model.rs, src/parse.rs
+- **Commit:** `a10bcb80a4a6dba19fe2612bd43ff830db253e71`
+
+## T-504 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/fact.rs
+- **Commit:** `543bec8be74efa8cf128fb3db716b011f0055fe5`
+
+## T-505 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** `52549ba6f0913814342d1b50521171c3a547a058`
+
+## T-506 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/main.rs
+- **Commit:** `4b51e8b729a90348f4aed02960ebd171f40d3fda`
+
+## T-507 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/display.rs
+- **Commit:** `59b8dcac5605728c5117436fa791fb232f47aaa3`
+
+## T-508 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** docs/SUMMARY.md, docs/intents/README.md, README.md, tests/ingest_pipeline.rs, tests/dive_pipeline.rs, src/client.rs
+- **Commit:** `a82da805c7f6caf882fba2085858afee39a9c1e7`

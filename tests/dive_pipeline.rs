@@ -1,13 +1,16 @@
 use diver::fact::SourceFact;
+use diver::id::ArxivCategory;
 use diver::store::Store;
 
 fn make_fact(id: &str, title: &str, summary: &str) -> SourceFact {
+    let primary = ArxivCategory::parse("cs.CL").unwrap();
     SourceFact {
         arxiv_id: id.to_string(),
         title: title.to_string(),
         authors: vec!["Alice".to_string(), "Bob".to_string()],
         summary: summary.to_string(),
-        primary_category: "cs.CL".to_string(),
+        primary_category: primary.clone(),
+        categories: vec![primary],
         published: "2023-01-01T00:00:00Z".to_string(),
         updated: "2023-01-01T00:00:00Z".to_string(),
         pdf_url: format!("http://arxiv.org/pdf/{id}"),
@@ -18,7 +21,7 @@ fn make_fact(id: &str, title: &str, summary: &str) -> SourceFact {
 }
 
 #[test]
-fn test_dive_pipeline() {
+fn test_find_pipeline() {
     let store = Store::open_in_memory().unwrap();
 
     store

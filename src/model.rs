@@ -6,6 +6,8 @@ pub struct Paper {
     pub authors: Vec<String>,
     pub summary: String,
     pub primary_category: String,
+    /// All category codes for this paper (including primary), in feed order, deduplicated.
+    pub categories: Vec<String>,
     pub published: String,
     pub updated: String,
     pub arxiv_id: String,
@@ -35,6 +37,7 @@ mod tests {
             authors: vec!["Alice".to_string(), "Bob".to_string()],
             summary: "A summary.".to_string(),
             primary_category: "cs.CL".to_string(),
+            categories: vec!["cs.CL".to_string()],
             published: "2023-01-01".to_string(),
             updated: "2023-01-01".to_string(),
             arxiv_id: "2301.00001".to_string(),

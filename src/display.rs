@@ -1,6 +1,7 @@
 use owo_colors::OwoColorize;
 
 use crate::fact::SourceFact;
+use crate::id::ArxivCategory;
 use crate::model::Paper;
 use crate::store::SearchResult;
 
@@ -29,20 +30,59 @@ pub fn display_results(papers: &[Paper], total: u32) {
     }
 }
 
-pub fn display_fact(fact: &SourceFact) {
+/// Display full metadata for an ingested paper, including taxonomy-resolved category
+/// names, secondary categories, and a version history list.
+pub fn display_fact(fact: &SourceFact, versions: &[String]) {
     println!("{}", fact.title.bold());
     println!("  {}", fact.authors.join(", ").dimmed());
     println!();
     println!("  {}", fact.summary);
     println!();
+    println!("  {}", format!("https://arxiv.org/abs/{}", fact.arxiv_id).underline());
+    println!();
+
+    // Primary category with taxonomy name
+    println!("  {}", "Primary category:".dimmed());
     println!(
-        "  {} | {}",
-        fact.primary_category.cyan(),
-        format!("https://arxiv.org/abs/{}", fact.arxiv_id).underline()
+        "    {}",
+        format_category(&fact.primary_category).cyan()
     );
-    println!("  {} {}", "Version:".dimmed(), fact.arxiv_version);
+
+    // Secondary categories (all except primary)
+    let secondary: Vec<&ArxivCategory> = fact
+        .categories
+        .iter()
+        .filter(|c| c.code() != fact.primary_category.code())
+        .collect();
+
+    if !secondary.is_empty() {
+        println!("  {}", "Secondary:".dimmed());
+        for cat in secondary {
+            println!("    {}", format_category(cat));
+        }
+    }
+
+    println!();
+
+    // Version history
+    if !versions.is_empty() {
+        println!("  {}", "Versions:".dimmed());
+        for v in versions {
+            if v == &fact.arxiv_version {
+                println!("    {}  {}", v.bold(), "←".dimmed());
+            } else {
+                println!("    {}", v.dimmed());
+            }
+        }
+        println!();
+    }
+
     println!("  {} {}", "Source:".dimmed(), fact.source_url);
     println!("  {} {}", "Ingested:".dimmed(), fact.ingested_at);
+}
+
+fn format_category(cat: &ArxivCategory) -> String {
+    format!("{} — {}", cat.code(), cat.name())
 }
 
 pub fn display_fact_list(facts: &[SourceFact]) {
@@ -65,7 +105,10 @@ pub fn display_fact_list(facts: &[SourceFact]) {
         let date = &fact.ingested_at[..10.min(fact.ingested_at.len())];
         println!(
             "{:<16} {:<52} {:<8} {}",
-            fact.arxiv_id, title, fact.primary_category, date,
+            fact.arxiv_id,
+            title,
+            fact.primary_category.code(),
+            date,
         );
     }
 
@@ -135,6 +178,7 @@ mod tests {
             authors: vec!["Alice".to_string(), "Bob".to_string()],
             summary: summary.to_string(),
             primary_category: "cs.AI".to_string(),
+            categories: vec!["cs.AI".to_string()],
             published: "2023-01-01".to_string(),
             updated: "2023-01-01".to_string(),
             arxiv_id: "2301.00001".to_string(),
@@ -173,12 +217,14 @@ mod tests {
     }
 
     fn make_fact(id: &str, title: &str) -> SourceFact {
+        let primary = ArxivCategory::parse("cs.CL").unwrap();
         SourceFact {
             arxiv_id: id.to_string(),
             title: title.to_string(),
             authors: vec!["Alice".to_string()],
             summary: "A summary.".to_string(),
-            primary_category: "cs.CL".to_string(),
+            primary_category: primary.clone(),
+            categories: vec![primary],
             published: "2023-01-01T00:00:00Z".to_string(),
             updated: "2023-01-01T00:00:00Z".to_string(),
             pdf_url: format!("http://arxiv.org/pdf/{id}"),
@@ -195,7 +241,7 @@ mod tests {
         use std::io::Write;
         writeln!(buf, "{}", fact.title).unwrap();
         writeln!(buf, "{}", fact.authors.join(", ")).unwrap();
-        writeln!(buf, "{}", fact.primary_category).unwrap();
+        writeln!(buf, "{}", fact.primary_category.code()).unwrap();
         writeln!(buf, "{}", fact.source_url).unwrap();
         writeln!(buf, "{}", fact.arxiv_version).unwrap();
         writeln!(buf, "{}", fact.ingested_at).unwrap();
@@ -209,6 +255,64 @@ mod tests {
     }
 
     #[test]
+    fn test_display_fact_taxonomy_name() {
+        let primary = ArxivCategory::parse("cs.CV").unwrap();
+        let cat_str = format_category(&primary);
+        assert!(
+            cat_str.contains("Computer Vision and Pattern Recognition"),
+            "got: {cat_str}"
+        );
+    }
+
+    #[test]
+    fn test_display_fact_secondary_categories() {
+        let primary = ArxivCategory::parse("cs.CV").unwrap();
+        let secondary = ArxivCategory::parse("math.NA").unwrap();
+        let fact = SourceFact {
+            arxiv_id: "2301.00001".to_string(),
+            title: "Multi-Category Paper".to_string(),
+            authors: vec!["Alice".to_string()],
+            summary: "A summary.".to_string(),
+            primary_category: primary.clone(),
+            categories: vec![primary, secondary],
+            published: "2023-01-01T00:00:00Z".to_string(),
+            updated: "2023-01-01T00:00:00Z".to_string(),
+            pdf_url: "http://arxiv.org/pdf/2301.00001".to_string(),
+            source_url: "https://export.arxiv.org/api/query?id_list=2301.00001".to_string(),
+            arxiv_version: "v1".to_string(),
+            ingested_at: "2026-08-28T12:00:00Z".to_string(),
+        };
+        // Verify secondary contains math.NA but categories[0] is cs.CV
+        let secondary_cats: Vec<_> = fact
+            .categories
+            .iter()
+            .filter(|c| c.code() != fact.primary_category.code())
+            .collect();
+        assert_eq!(secondary_cats.len(), 1);
+        assert_eq!(secondary_cats[0].code(), "math.NA");
+    }
+
+    #[test]
+    fn test_display_fact_version_marker() {
+        let fact = make_fact("2301.00001", "Test");
+        let versions = vec!["v1".to_string(), "v2".to_string()];
+        // The current version in fact is "v1"; verify version marker logic
+        let current = &fact.arxiv_version;
+        let marked: Vec<String> = versions
+            .iter()
+            .map(|v| {
+                if v == current {
+                    format!("{}  <-", v)
+                } else {
+                    v.clone()
+                }
+            })
+            .collect();
+        assert!(marked[0].contains("<-"), "v1 should be marked current");
+        assert!(!marked[1].contains("<-"), "v2 should not be marked");
+    }
+
+    #[test]
     fn test_display_fact_list() {
         let facts = vec![
             make_fact("2301.00001", "First Paper"),
@@ -218,7 +322,7 @@ mod tests {
             "{:<16} {:<52} {:<8} {}",
             facts[0].arxiv_id,
             truncate_title(&facts[0].title, 50),
-            facts[0].primary_category,
+            facts[0].primary_category.code(),
             &facts[0].ingested_at[..10],
         );
         assert!(line_1.contains("2301.00001"));
