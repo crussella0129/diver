@@ -1,4 +1,3 @@
 # Agent Tasks (Persistent Backlog)
 
-## T-012: Display formatters for SourceFact and list view — (sprint 2) [intent: INT-0002]
 ## T-013: Wire ingest/inspect/list CLI subcommands — (sprint 2) [intent: INT-0002]
