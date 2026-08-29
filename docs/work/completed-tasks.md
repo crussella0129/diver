@@ -113,3 +113,51 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/main.rs
 - **Commit:** `c23792814169b2417dae8bbb9682418397db8a14`
+
+## T-501 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** taxonomy/arxiv_categories.json
+- **Commit:** PENDING
+
+## T-502 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/id.rs, src/lib.rs
+- **Commit:** PENDING
+
+## T-503 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/model.rs, src/parse.rs
+- **Commit:** PENDING
+
+## T-504 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/fact.rs
+- **Commit:** PENDING
+
+## T-505 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** PENDING
+
+## T-506 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/main.rs
+- **Commit:** PENDING
+
+## T-507 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/display.rs
+- **Commit:** PENDING
+
+## T-508 — (sprint 5)
+- **Intent:** [INT-0005](../intents/INT-0005-harden-factual-substrate.md)
+- **Completed:** 2026-08-29
+- **Touched:** docs/SUMMARY.md, docs/intents/README.md, README.md, tests/ingest_pipeline.rs, tests/dive_pipeline.rs, src/client.rs
+- **Commit:** PENDING
