@@ -100,4 +100,4 @@
 - **Intent:** [INT-0003](../intents/INT-0003-local-knowledge-search.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/main.rs, tests/dive_pipeline.rs
-- **Commit:** PENDING
+- **Commit:** `0e0c2f9c233b15c777b25f0b6260bb0d0b932292`
