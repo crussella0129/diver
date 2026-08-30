@@ -167,3 +167,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/store.rs, docs/intents/INT-0006-reconcile-review-hardening.md
 - **Commit:** `068d17bf237d0a866add9f9b5237720f67d22800`
+
+## T-602 — (sprint 6)
+- **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** PENDING

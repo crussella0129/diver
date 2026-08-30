@@ -665,6 +665,55 @@ mod tests {
     }
 
     #[test]
+    fn test_reingest_older_version_keeps_latest_in_fts() {
+        // Regression (review fix #1): the FTS index is refreshed from the latest
+        // stored version (max ingested_at), not the incoming fact. Ingesting an
+        // older version (lower ingested_at) after a newer one must NOT push the
+        // older text into the search index.
+        let store = Store::open_in_memory().unwrap();
+        let primary = ArxivCategory::parse("cs.CL").unwrap();
+
+        let make = |version: &str, summary: &str, ingested_at: &str| SourceFact {
+            arxiv_id: "2301.00001".to_string(),
+            title: "Shared Title".to_string(),
+            authors: vec!["Alice".to_string()],
+            summary: summary.to_string(),
+            primary_category: primary.clone(),
+            categories: vec![primary.clone()],
+            published: "2023-01-01T00:00:00Z".to_string(),
+            updated: "2023-01-01T00:00:00Z".to_string(),
+            pdf_url: "http://arxiv.org/pdf/2301.00001".to_string(),
+            source_url: "https://export.arxiv.org/api/query?id_list=2301.00001".to_string(),
+            arxiv_version: version.to_string(),
+            ingested_at: ingested_at.to_string(),
+        };
+
+        // v2 carries the newer ingestion timestamp; v1 (older) is ingested after.
+        store
+            .save(&make(
+                "v2",
+                "latestquantumfoo results",
+                "2026-08-28T02:00:00Z",
+            ))
+            .unwrap();
+        store
+            .save(&make(
+                "v1",
+                "olderclassicbar results",
+                "2026-08-28T01:00:00Z",
+            ))
+            .unwrap();
+
+        // FTS reflects v2 (latest by ingested_at), so the v2 term is searchable...
+        let latest = store.search("latestquantumfoo", 10).unwrap();
+        assert_eq!(latest.len(), 1, "latest (v2) text must be searchable");
+
+        // ...and the older v1 term never entered the index.
+        let older = store.search("olderclassicbar", 10).unwrap();
+        assert!(older.is_empty(), "stale v1 text must not be in FTS");
+    }
+
+    #[test]
     fn test_upsert_updates_fts() {
         let store = Store::open_in_memory().unwrap();
 
