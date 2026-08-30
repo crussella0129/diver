@@ -6,7 +6,7 @@
 - **Work evidence:** [Sprint 7 build plan](../sprints/s7/sprint-plans/build-plan.md) (T-701, T-702, T-703)
 - **Completion evidence:** none
 - **Code evidence:** none
-- **Test evidence:** none
+- **Test evidence:** [Sprint 7 test report](../sprints/s7/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
 ## Intent
