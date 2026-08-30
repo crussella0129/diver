@@ -185,3 +185,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** Cargo.toml (virtual workspace, resolver 3), Cargo.lock, diver-core/Cargo.toml, diver-core/src/*.rs (moved from src/), diver-core/taxonomy/ (moved), diver-core/tests/ (moved, imports repointed to diver_core::), docs/intents/INT-0007-workspace-restructure.md
 - **Commit:** `7bfc2b32cf7d1d873ec63c3782d1cbcd9d4f0f71`
+
+## T-605 — (sprint 6)
+- **Intent:** [INT-0007](../intents/INT-0007-workspace-restructure.md)
+- **Completed:** 2026-08-29
+- **Touched:** diver-cli/Cargo.toml (new, [[bin]] name = "diver"), diver-cli/src/main.rs (moved from src/, imports repointed to diver_core::), Cargo.toml (added diver-cli member), Cargo.lock
+- **Commit:** PENDING

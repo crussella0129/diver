@@ -1,11 +1,11 @@
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use diver::client::ArxivClient;
-use diver::display;
-use diver::fact::SourceFact;
-use diver::query::{QueryBuilder, SortBy};
-use diver::store::Store;
+use diver_core::client::ArxivClient;
+use diver_core::display;
+use diver_core::fact::SourceFact;
+use diver_core::query::{QueryBuilder, SortBy};
+use diver_core::store::Store;
 
 #[derive(Parser)]
 #[command(name = "diver", about = "Find knowledge, not just papers, on ArXiv")]
