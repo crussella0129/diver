@@ -190,4 +190,4 @@
 - **Intent:** [INT-0007](../intents/INT-0007-workspace-restructure.md)
 - **Completed:** 2026-08-29
 - **Touched:** diver-cli/Cargo.toml (new, [[bin]] name = "diver"), diver-cli/src/main.rs (moved from src/, imports repointed to diver_core::), Cargo.toml (added diver-cli member), Cargo.lock
-- **Commit:** PENDING
+- **Commit:** `beea18cb233490285d4046a4b7a0c3d285f574fd`
