@@ -179,3 +179,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** src/id.rs
 - **Commit:** `3753e4da7e6ce01afb24f3ea0cb54e408188a5a4`
+
+## T-604 — (sprint 6)
+- **Intent:** [INT-0007](../intents/INT-0007-workspace-restructure.md)
+- **Completed:** 2026-08-29
+- **Touched:** Cargo.toml (virtual workspace, resolver 3), Cargo.lock, diver-core/Cargo.toml, diver-core/src/*.rs (moved from src/), diver-core/taxonomy/ (moved), diver-core/tests/ (moved, imports repointed to diver_core::), docs/intents/INT-0007-workspace-restructure.md
+- **Commit:** PENDING

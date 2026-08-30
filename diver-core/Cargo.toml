@@ -1,0 +1,17 @@
+[package]
+name = "diver-core"
+version = "0.1.0"
+edition = "2024"
+description = "Diver's epistemic engine: arXiv ingestion, parsing, storage, and local search"
+license = "Apache-2.0"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+dirs = "6"
+owo-colors = "4"
+quick-xml = { version = "0.37", features = ["serialize"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

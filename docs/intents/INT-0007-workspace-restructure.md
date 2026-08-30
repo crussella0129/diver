@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0007
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 6 build plan](../sprints/s6/sprint-plans/build-plan.md) (T-604, T-605)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -80,3 +80,4 @@ keeps all "prepare the substrate before the semantic layer" work together.
 - 2026-08-29: created as `proposed`.
 - 2026-08-29: `proposed` → `planned`; linked to Sprint 6 build plan (T-604
   workspace + `diver-core` library, T-605 `diver-cli` binary).
+- 2026-08-29: `planned` → `active` (Sprint 6 build; T-604 workspace + `diver-core`).
