@@ -10,6 +10,7 @@ Find knowledge, not just papers, on ArXiv
 | `diver ingest <arxiv-id>` | Ingest a single paper by arXiv ID |
 | `diver find <query>` | Search your local corpus (FTS) |
 | `diver inspect <arxiv-id>` | Show full metadata, taxonomy-resolved categories, and version history |
+| `diver extract <arxiv-id>` | Extract supported assertions from a stored paper's abstract |
 | `diver list` | List all ingested papers |
 
 > **Note:** `diver dive` is reserved for a future sprint — graph traversal is not yet implemented.

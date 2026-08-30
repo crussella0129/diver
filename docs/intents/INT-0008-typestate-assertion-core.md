@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0008
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 7 build plan](../sprints/s7/sprint-plans/build-plan.md) (T-701, T-702, T-703)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-701/T-702/T-703 completion](../work/completed-tasks.md#t-701--sprint-7)
+- **Code evidence:** [diver-core/src/observation.rs](../../diver-core/src/observation.rs), [diver-core/src/assertion.rs](../../diver-core/src/assertion.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 7 test report](../sprints/s7/sprint-tests/test-report.md)
-- **Documentation evidence:** none
+- **Documentation evidence:** [README.md](../../README.md) (`diver extract` command)
 
 ## Intent
 
@@ -100,3 +100,7 @@ through the same validated gate without changing it.
 - 2026-08-30: `proposed` → `planned`; linked to Sprint 7 build plan (T-701
   Observation + extractor, T-702 Assertion typestate, T-703 `diver extract`).
 - 2026-08-30: `planned` → `active` (Sprint 7 build started; T-701 first).
+- 2026-08-30: `active` → `realized` (Sprint 7: `Observation` + deterministic
+  extractor, `Assertion<Candidate>`/`Assertion<Supported>` with validation-only
+  transition to `Supported`, and `diver extract`; 77 tests pass. AC2/AC4
+  compile-time gate evidenced structurally — see test report / critique C-001).
