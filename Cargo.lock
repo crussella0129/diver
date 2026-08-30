@@ -255,12 +255,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "diver"
+name = "diver-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "diver-core",
+ "tokio",
+]
+
+[[package]]
+name = "diver-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "clap",
  "dirs",
  "owo-colors",
  "quick-xml",
@@ -268,7 +277,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]

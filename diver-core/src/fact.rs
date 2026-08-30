@@ -157,7 +157,11 @@ mod tests {
     #[test]
     fn test_source_fact_categories() {
         let mut paper = test_paper();
-        paper.categories = vec!["cs.CL".to_string(), "cs.AI".to_string(), "cs.LG".to_string()];
+        paper.categories = vec![
+            "cs.CL".to_string(),
+            "cs.AI".to_string(),
+            "cs.LG".to_string(),
+        ];
         let fact = SourceFact::from_paper(paper, String::new());
 
         assert_eq!(fact.categories.len(), 3);

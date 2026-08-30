@@ -6,6 +6,8 @@
   - [INT-0003 Local knowledge search](intents/INT-0003-local-knowledge-search.md)
   - [INT-0004 Batch collection](intents/INT-0004-batch-collection.md)
   - [INT-0005 Harden factual substrate](intents/INT-0005-harden-factual-substrate.md)
+  - [INT-0006 Reconcile out-of-loop review hardening](intents/INT-0006-reconcile-review-hardening.md)
+  - [INT-0007 Restructure into a Cargo workspace](intents/INT-0007-workspace-restructure.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -14,3 +16,4 @@
 - [Sprint 3](sprints/s3/sprint-meta.md)
 - [Sprint 4](sprints/s4/sprint-meta.md)
 - [Sprint 5](sprints/s5/sprint-meta.md)
+- [Sprint 6](sprints/s6/sprint-meta.md)

@@ -1,7 +1,7 @@
-use diver::client::extract_paper;
-use diver::fact::SourceFact;
-use diver::parse;
-use diver::store::Store;
+use diver_core::client::extract_paper;
+use diver_core::fact::SourceFact;
+use diver_core::parse;
+use diver_core::store::Store;
 
 #[test]
 fn test_ingest_pipeline() {

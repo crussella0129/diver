@@ -38,15 +38,15 @@ pub fn display_fact(fact: &SourceFact, versions: &[String]) {
     println!();
     println!("  {}", fact.summary);
     println!();
-    println!("  {}", format!("https://arxiv.org/abs/{}", fact.arxiv_id).underline());
+    println!(
+        "  {}",
+        format!("https://arxiv.org/abs/{}", fact.arxiv_id).underline()
+    );
     println!();
 
     // Primary category with taxonomy name
     println!("  {}", "Primary category:".dimmed());
-    println!(
-        "    {}",
-        format_category(&fact.primary_category).cyan()
-    );
+    println!("    {}", format_category(&fact.primary_category).cyan());
 
     // Secondary categories (all except primary)
     let secondary: Vec<&ArxivCategory> = fact

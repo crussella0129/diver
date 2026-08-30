@@ -181,7 +181,12 @@ impl Store {
 
             // Refresh FTS using the latest version's data (not the incoming fact,
             // which may be an older version being re-ingested).
-            let (fts_title, fts_authors_json, fts_summary, fts_category): (String, String, String, String) = self
+            let (fts_title, fts_authors_json, fts_summary, fts_category): (
+                String,
+                String,
+                String,
+                String,
+            ) = self
                 .conn
                 .query_row(
                     "SELECT pv.title, pv.authors, pv.summary, pv.primary_category
@@ -194,7 +199,8 @@ impl Store {
                 )
                 .context("failed to query latest version for FTS")?;
 
-            let fts_authors: Vec<String> = serde_json::from_str(&fts_authors_json).unwrap_or_default();
+            let fts_authors: Vec<String> =
+                serde_json::from_str(&fts_authors_json).unwrap_or_default();
             let fts_authors_text = fts_authors.join(", ");
 
             self.conn
@@ -373,14 +379,16 @@ impl Store {
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
-    row_to_fact_raw(row)?
-        .map_err(|e| {
-            rusqlite::Error::FromSqlConversionFailure(
-                0,
-                rusqlite::types::Type::Text,
-                Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())),
-            )
-        })
+    row_to_fact_raw(row)?.map_err(|e| {
+        rusqlite::Error::FromSqlConversionFailure(
+            0,
+            rusqlite::types::Type::Text,
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                e.to_string(),
+            )),
+        )
+    })
 }
 
 /// Returns `Ok(Ok(SourceFact))` on success, `Ok(Err(anyhow::Error))` on parse failure,
@@ -400,10 +408,10 @@ fn row_to_fact_raw(row: &rusqlite::Row<'_>) -> rusqlite::Result<Result<SourceFac
     let ingested_at: String = row.get(11)?;
 
     Ok((|| -> anyhow::Result<SourceFact> {
-        let authors: Vec<String> = serde_json::from_str(&authors_json)
-            .context("failed to deserialize authors")?;
-        let category_codes: Vec<String> = serde_json::from_str(&categories_json)
-            .unwrap_or_default();
+        let authors: Vec<String> =
+            serde_json::from_str(&authors_json).context("failed to deserialize authors")?;
+        let category_codes: Vec<String> =
+            serde_json::from_str(&categories_json).unwrap_or_default();
 
         let primary_category = crate::id::ArxivCategory::parse(&primary_category_code)
             .unwrap_or_else(|_| crate::id::ArxivCategory::unknown(&primary_category_code));
@@ -513,7 +521,12 @@ mod tests {
         let fact = test_fact("2301.00001", "v1", "Original Title", "2026-08-28T00:00:00Z");
         store.save(&fact).unwrap();
 
-        let corrected = test_fact("2301.00001", "v1", "Corrected Title", "2026-08-28T01:00:00Z");
+        let corrected = test_fact(
+            "2301.00001",
+            "v1",
+            "Corrected Title",
+            "2026-08-28T01:00:00Z",
+        );
         store.save(&corrected).unwrap();
 
         let retrieved = store.get("2301.00001").unwrap().unwrap();
@@ -564,13 +577,28 @@ mod tests {
         let store = Store::open_in_memory().unwrap();
 
         store
-            .save(&test_fact("2301.00001", "v1", "Paper A", "2026-08-28T01:00:00Z"))
+            .save(&test_fact(
+                "2301.00001",
+                "v1",
+                "Paper A",
+                "2026-08-28T01:00:00Z",
+            ))
             .unwrap();
         store
-            .save(&test_fact("2302.00002", "v1", "Paper B", "2026-08-28T02:00:00Z"))
+            .save(&test_fact(
+                "2302.00002",
+                "v1",
+                "Paper B",
+                "2026-08-28T02:00:00Z",
+            ))
             .unwrap();
         store
-            .save(&test_fact("2303.00003", "v1", "Paper C", "2026-08-28T03:00:00Z"))
+            .save(&test_fact(
+                "2303.00003",
+                "v1",
+                "Paper C",
+                "2026-08-28T03:00:00Z",
+            ))
             .unwrap();
 
         let facts = store.list().unwrap();
@@ -585,6 +613,33 @@ mod tests {
         let store = Store::open_in_memory().unwrap();
         let facts = store.list().unwrap();
         assert!(facts.is_empty());
+    }
+
+    #[test]
+    fn test_fk_constraint_enforced() {
+        // Regression (review fix #5): PRAGMA foreign_keys=ON must reject a
+        // paper_version whose parent papers row does not exist. Insert directly,
+        // bypassing save() — which always creates the papers row first — so the
+        // constraint is proven live, not merely declared.
+        let store = Store::open_in_memory().unwrap();
+
+        let result = store.conn.execute(
+            "INSERT INTO paper_versions
+             (paper_id, version, title, authors, summary, primary_category,
+              categories, published, updated, pdf_url, source_url, ingested_at)
+             VALUES (99999, 'v1', 't', '[]', 's', 'cs.CL', '[]', 'p', 'u', 'pdf', 'src', 'ing')",
+            [],
+        );
+
+        assert!(
+            result.is_err(),
+            "insert with an orphan paper_id must be rejected"
+        );
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("FOREIGN KEY"),
+            "expected FK violation, got: {msg}"
+        );
     }
 
     #[test]
@@ -607,6 +662,55 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_reingest_older_version_keeps_latest_in_fts() {
+        // Regression (review fix #1): the FTS index is refreshed from the latest
+        // stored version (max ingested_at), not the incoming fact. Ingesting an
+        // older version (lower ingested_at) after a newer one must NOT push the
+        // older text into the search index.
+        let store = Store::open_in_memory().unwrap();
+        let primary = ArxivCategory::parse("cs.CL").unwrap();
+
+        let make = |version: &str, summary: &str, ingested_at: &str| SourceFact {
+            arxiv_id: "2301.00001".to_string(),
+            title: "Shared Title".to_string(),
+            authors: vec!["Alice".to_string()],
+            summary: summary.to_string(),
+            primary_category: primary.clone(),
+            categories: vec![primary.clone()],
+            published: "2023-01-01T00:00:00Z".to_string(),
+            updated: "2023-01-01T00:00:00Z".to_string(),
+            pdf_url: "http://arxiv.org/pdf/2301.00001".to_string(),
+            source_url: "https://export.arxiv.org/api/query?id_list=2301.00001".to_string(),
+            arxiv_version: version.to_string(),
+            ingested_at: ingested_at.to_string(),
+        };
+
+        // v2 carries the newer ingestion timestamp; v1 (older) is ingested after.
+        store
+            .save(&make(
+                "v2",
+                "latestquantumfoo results",
+                "2026-08-28T02:00:00Z",
+            ))
+            .unwrap();
+        store
+            .save(&make(
+                "v1",
+                "olderclassicbar results",
+                "2026-08-28T01:00:00Z",
+            ))
+            .unwrap();
+
+        // FTS reflects v2 (latest by ingested_at), so the v2 term is searchable...
+        let latest = store.search("latestquantumfoo", 10).unwrap();
+        assert_eq!(latest.len(), 1, "latest (v2) text must be searchable");
+
+        // ...and the older v1 term never entered the index.
+        let older = store.search("olderclassicbar", 10).unwrap();
+        assert!(older.is_empty(), "stale v1 text must not be in FTS");
     }
 
     #[test]

@@ -1,6 +1,6 @@
-use diver::fact::SourceFact;
-use diver::id::ArxivCategory;
-use diver::store::Store;
+use diver_core::fact::SourceFact;
+use diver_core::id::ArxivCategory;
+use diver_core::store::Store;
 
 fn make_fact(id: &str, title: &str, summary: &str) -> SourceFact {
     let primary = ArxivCategory::parse("cs.CL").unwrap();

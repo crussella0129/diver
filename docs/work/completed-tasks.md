@@ -161,3 +161,33 @@
 - **Completed:** 2026-08-29
 - **Touched:** docs/SUMMARY.md, docs/intents/README.md, README.md, tests/ingest_pipeline.rs, tests/dive_pipeline.rs, src/client.rs
 - **Commit:** `a82da805c7f6caf882fba2085858afee39a9c1e7`
+
+## T-601 — (sprint 6)
+- **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs, docs/intents/INT-0006-reconcile-review-hardening.md
+- **Commit:** `068d17bf237d0a866add9f9b5237720f67d22800`
+
+## T-602 — (sprint 6)
+- **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs
+- **Commit:** `04216b325f025b74bd4f0471ae5a3520da5863d6`
+
+## T-603 — (sprint 6)
+- **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/id.rs
+- **Commit:** `3753e4da7e6ce01afb24f3ea0cb54e408188a5a4`
+
+## T-604 — (sprint 6)
+- **Intent:** [INT-0007](../intents/INT-0007-workspace-restructure.md)
+- **Completed:** 2026-08-29
+- **Touched:** Cargo.toml (virtual workspace, resolver 3), Cargo.lock, diver-core/Cargo.toml, diver-core/src/*.rs (moved from src/), diver-core/taxonomy/ (moved), diver-core/tests/ (moved, imports repointed to diver_core::), docs/intents/INT-0007-workspace-restructure.md
+- **Commit:** `7bfc2b32cf7d1d873ec63c3782d1cbcd9d4f0f71`
+
+## T-605 — (sprint 6)
+- **Intent:** [INT-0007](../intents/INT-0007-workspace-restructure.md)
+- **Completed:** 2026-08-29
+- **Touched:** diver-cli/Cargo.toml (new, [[bin]] name = "diver"), diver-cli/src/main.rs (moved from src/, imports repointed to diver_core::), Cargo.toml (added diver-cli member), Cargo.lock
+- **Commit:** `beea18cb233490285d4046a4b7a0c3d285f574fd`
