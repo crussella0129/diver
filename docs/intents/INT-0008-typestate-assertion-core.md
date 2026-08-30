@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0008
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 7 build plan](../sprints/s7/sprint-plans/build-plan.md) (T-701, T-702, T-703)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -99,3 +99,4 @@ through the same validated gate without changing it.
 - 2026-08-30: created as `proposed`.
 - 2026-08-30: `proposed` → `planned`; linked to Sprint 7 build plan (T-701
   Observation + extractor, T-702 Assertion typestate, T-703 `diver extract`).
+- 2026-08-30: `planned` → `active` (Sprint 7 build started; T-701 first).

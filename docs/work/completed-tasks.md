@@ -191,3 +191,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** diver-cli/Cargo.toml (new, [[bin]] name = "diver"), diver-cli/src/main.rs (moved from src/, imports repointed to diver_core::), Cargo.toml (added diver-cli member), Cargo.lock
 - **Commit:** `beea18cb233490285d4046a4b7a0c3d285f574fd`
+
+## T-701 — (sprint 7)
+- **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
+- **Completed:** 2026-08-30
+- **Touched:** diver-core/src/observation.rs, diver-core/src/id.rs, diver-core/src/lib.rs
+- **Commit:** PENDING

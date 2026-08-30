@@ -31,6 +31,19 @@ impl fmt::Display for ArxivId {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ArxivVersion(pub u32);
 
+impl ArxivVersion {
+    /// Parse a `vN` version tag (e.g. `"v2"` → `ArxivVersion(2)`).
+    /// A malformed or `< 1` value falls back to `v1`, matching how
+    /// `SourceFact` ingestion defaults an absent version.
+    pub fn parse(raw: &str) -> Self {
+        raw.strip_prefix('v')
+            .and_then(|n| n.parse::<u32>().ok())
+            .filter(|&n| n >= 1)
+            .map(ArxivVersion)
+            .unwrap_or(ArxivVersion(1))
+    }
+}
+
 impl fmt::Display for ArxivVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "v{}", self.0)
@@ -194,6 +207,16 @@ mod tests {
         assert_eq!(ArxivVersion(1).to_string(), "v1");
         assert_eq!(ArxivVersion(2).to_string(), "v2");
         assert_eq!(ArxivVersion(10).to_string(), "v10");
+    }
+
+    #[test]
+    fn test_arxiv_version_parse() {
+        assert_eq!(ArxivVersion::parse("v2"), ArxivVersion(2));
+        assert_eq!(ArxivVersion::parse("v10"), ArxivVersion(10));
+        // Malformed or < 1 falls back to v1.
+        assert_eq!(ArxivVersion::parse("garbage"), ArxivVersion(1));
+        assert_eq!(ArxivVersion::parse("v0"), ArxivVersion(1));
+        assert_eq!(ArxivVersion::parse(""), ArxivVersion(1));
     }
 
     #[test]
