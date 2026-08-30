@@ -196,4 +196,4 @@
 - **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
 - **Completed:** 2026-08-30
 - **Touched:** diver-core/src/observation.rs, diver-core/src/id.rs, diver-core/src/lib.rs
-- **Commit:** PENDING
+- **Commit:** `f9c66b6f1d5eff336ed7459c5fda3e7bd2938052`
