@@ -233,7 +233,10 @@ mod tests {
         );
         // Deduplicated: cs.CL should appear only once
         let cl_count = paper.categories.iter().filter(|c| *c == "cs.CL").count();
-        assert_eq!(cl_count, 1, "cs.CL should appear exactly once in categories");
+        assert_eq!(
+            cl_count, 1,
+            "cs.CL should appear exactly once in categories"
+        );
     }
 
     #[test]
@@ -270,7 +273,11 @@ mod tests {
         assert_eq!(result.papers.len(), 1);
         let paper = &result.papers[0];
         assert_eq!(paper.primary_category, "cs.LG");
-        assert_eq!(paper.categories.len(), 1, "should have exactly one category");
+        assert_eq!(
+            paper.categories.len(),
+            1,
+            "should have exactly one category"
+        );
         assert_eq!(paper.categories[0], "cs.LG");
     }
 }
