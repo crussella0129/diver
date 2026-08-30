@@ -11,3 +11,5 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0003](INT-0003-local-knowledge-search.md) | Local knowledge search | realized |
 | [INT-0004](INT-0004-batch-collection.md) | Batch collection | realized |
 | [INT-0005](INT-0005-harden-factual-substrate.md) | Harden factual substrate | realized |
+| [INT-0006](INT-0006-reconcile-review-hardening.md) | Reconcile out-of-loop review hardening | planned |
+| [INT-0007](INT-0007-workspace-restructure.md) | Restructure into a Cargo workspace | planned |
