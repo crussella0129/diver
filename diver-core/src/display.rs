@@ -1,5 +1,6 @@
 use owo_colors::OwoColorize;
 
+use crate::assertion::{Assertion, Supported};
 use crate::fact::SourceFact;
 use crate::id::ArxivCategory;
 use crate::model::Paper;
@@ -79,6 +80,30 @@ pub fn display_fact(fact: &SourceFact, versions: &[String]) {
 
     println!("  {} {}", "Source:".dimmed(), fact.source_url);
     println!("  {} {}", "Ingested:".dimmed(), fact.ingested_at);
+}
+
+/// Display the supported assertions extracted from a paper, each with the
+/// provenance of its supporting observations.
+pub fn display_extract(arxiv_id: &str, supported: &[Assertion<Supported>]) {
+    println!("{}", format!("Supported assertions for {arxiv_id}").bold());
+    println!();
+
+    if supported.is_empty() {
+        println!("  {}", "No supported assertions extracted.".dimmed());
+        return;
+    }
+
+    for (i, assertion) in supported.iter().enumerate() {
+        println!("{}", format!("[{}]", i + 1).dimmed());
+        println!("  {}", assertion.claim());
+        for obs in assertion.support() {
+            println!(
+                "    {}",
+                format!("— {} {}", obs.arxiv_id(), obs.version()).dimmed()
+            );
+        }
+        println!();
+    }
 }
 
 fn format_category(cat: &ArxivCategory) -> String {

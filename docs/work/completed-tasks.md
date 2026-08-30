@@ -203,3 +203,9 @@
 - **Completed:** 2026-08-30
 - **Touched:** diver-core/src/assertion.rs, diver-core/src/lib.rs
 - **Commit:** `8ba66cc8cd87c2bfc0f3cb7b2a5bb0440e522a35`
+
+## T-703 — (sprint 7)
+- **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
+- **Completed:** 2026-08-30
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, diver-core/tests/extract_pipeline.rs
+- **Commit:** PENDING
