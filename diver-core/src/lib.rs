@@ -1,3 +1,4 @@
+pub mod assertion;
 pub mod client;
 pub mod display;
 pub mod fact;
