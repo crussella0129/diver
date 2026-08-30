@@ -171,6 +171,25 @@ mod tests {
     }
 
     #[test]
+    fn test_taxonomy_parse_repeated_consistent() {
+        // Regression (review fix #4): the taxonomy JSON is memoized in a OnceLock.
+        // Repeated, interleaved parses must each return the correct entry for their
+        // own code — proving the cache is shared correctly, not cross-contaminated.
+        for _ in 0..3 {
+            let cv = ArxivCategory::parse("cs.CV").unwrap();
+            assert_eq!(cv.name(), "Computer Vision and Pattern Recognition");
+
+            let na = ArxivCategory::parse("math.NA").unwrap();
+            assert_eq!(na.name(), "Numerical Analysis");
+
+            let ml = ArxivCategory::parse("stat.ML").unwrap();
+            assert_eq!(ml.name(), "Machine Learning");
+
+            assert!(ArxivCategory::parse("invalid.XX").is_err());
+        }
+    }
+
+    #[test]
     fn test_arxiv_version_display() {
         assert_eq!(ArxivVersion(1).to_string(), "v1");
         assert_eq!(ArxivVersion(2).to_string(), "v2");
