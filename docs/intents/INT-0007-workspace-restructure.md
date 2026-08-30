@@ -2,10 +2,10 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0007
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 6 build plan](../sprints/s6/sprint-plans/build-plan.md) (T-604, T-605)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-604/T-605 completion](../work/completed-tasks.md#t-604--sprint-6)
+- **Code evidence:** [workspace manifest](../../Cargo.toml), [diver-core/Cargo.toml](../../diver-core/Cargo.toml), [diver-cli/Cargo.toml](../../diver-cli/Cargo.toml)
 - **Test evidence:** [Sprint 6 test report](../sprints/s6/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
@@ -81,3 +81,8 @@ keeps all "prepare the substrate before the semantic layer" work together.
 - 2026-08-29: `proposed` → `planned`; linked to Sprint 6 build plan (T-604
   workspace + `diver-core` library, T-605 `diver-cli` binary).
 - 2026-08-29: `planned` → `active` (Sprint 6 build; T-604 workspace + `diver-core`).
+- 2026-08-29: `active` → `realized` (Sprint 6: workspace of `diver-core` +
+  `diver-cli`; `cargo build` yields the `diver` binary; all 68 tests pass under
+  the new layout; taxonomy `include_str!` resolves; integration tests import
+  `diver_core::`; CLI `--help` parity confirmed; `Cargo.lock` net change is only
+  the crate split).

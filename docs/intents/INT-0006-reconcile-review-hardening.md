@@ -2,10 +2,10 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0006
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 6 build plan](../sprints/s6/sprint-plans/build-plan.md) (T-601, T-602, T-603)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-601/T-602/T-603 completion](../work/completed-tasks.md#t-601--sprint-6)
+- **Code evidence:** [review-fix commit dd69859](https://github.com/crussella0129/diver/commit/dd69859008e13ecf1fb5b1b9e57b9d6fc70fac83), [PR #4](https://github.com/crussella0129/diver/pull/4), [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-core/src/id.rs](../../diver-core/src/id.rs)
 - **Test evidence:** [Sprint 6 test report](../sprints/s6/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
@@ -31,6 +31,33 @@ Non-goals:
 - No new product behavior, schema change, or CLI change.
 - No `Observation`/`Assertion`/semantic-layer types (deferred to a later sprint).
 - Do not rewrite the Sprint 5 record; sprint provenance is append-only.
+
+## The eight reconciled fixes
+
+Recorded here (per AC1) as the durable Book account of commit `dd69859`,
+"Fix 8 review findings: FTS consistency, metadata upsert, taxonomy caching",
+merged to `main` via PR #4:
+
+1. **FTS reads the latest stored version** — the FTS refresh queries the latest
+   version by `ingested_at`, not the incoming fact, preventing a stale search
+   index when re-ingesting an older version. *(regression: T-602)*
+2. **`paper_versions` metadata upsert** — `INSERT OR IGNORE` became
+   `ON CONFLICT(paper_id, version) DO UPDATE`, so same-version metadata
+   corrections (title, abstract) are applied. *(covered: `test_store_metadata_correction_applied`)*
+3. **Lenient category parse preserves the code** — `parse_category_lenient` keeps
+   the original code via `ArxivCategory::unknown()` instead of substituting
+   `cs.OH`. *(covered: `test_unknown_preserves_code`)*
+4. **Taxonomy cached in a `OnceLock`** — `ArxivCategory::parse` parses the
+   taxonomy JSON once. *(regression: T-603)*
+5. **`PRAGMA foreign_keys=ON`** — enforces the `paper_versions → papers` FK
+   constraint. *(regression: T-601)*
+6. **`_meta` rejected as a category** — `parse()` treats a leading-underscore key
+   as metadata, not a category. *(covered: `test_taxonomy_rejects_meta_key`)*
+7. **`list()` uses `row_to_fact` directly** — removes a triple-nested `Result`.
+   *(behavioral: `test_store_list`)*
+8. **`search()` reads from `paper_versions`** — all display columns come from the
+   canonical table (latest version), not a mix of FTS and `paper_versions`.
+   *(behavioral: `test_search_*`)*
 
 ## Acceptance criteria
 
@@ -83,3 +110,6 @@ keeps the branches coherent.
 - 2026-08-29: `proposed` → `planned`; linked to Sprint 6 build plan (T-601 FK
   enforcement, T-602 stale-FTS reingest, T-603 taxonomy-cache determinism).
 - 2026-08-29: `planned` → `active` (Sprint 6 build started; T-601 first).
+- 2026-08-29: `active` → `realized` (Sprint 6: AC2–AC4 proven by T-601/T-602/T-603
+  regression tests, AC5 verified `dev` contains all of `origin/main`, AC6 full
+  suite 68/68 green, AC1 enumeration + code evidence recorded above).
