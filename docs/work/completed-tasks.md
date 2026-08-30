@@ -178,4 +178,4 @@
 - **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
 - **Completed:** 2026-08-29
 - **Touched:** src/id.rs
-- **Commit:** PENDING
+- **Commit:** `3753e4da7e6ce01afb24f3ea0cb54e408188a5a4`
