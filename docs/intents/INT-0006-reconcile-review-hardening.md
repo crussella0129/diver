@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0006
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 6 build plan](../sprints/s6/sprint-plans/build-plan.md) (T-601, T-602, T-603)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -82,3 +82,4 @@ keeps the branches coherent.
 - 2026-08-29: created as `proposed`.
 - 2026-08-29: `proposed` → `planned`; linked to Sprint 6 build plan (T-601 FK
   enforcement, T-602 stale-FTS reingest, T-603 taxonomy-cache determinism).
+- 2026-08-29: `planned` → `active` (Sprint 6 build started; T-601 first).

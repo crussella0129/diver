@@ -161,3 +161,9 @@
 - **Completed:** 2026-08-29
 - **Touched:** docs/SUMMARY.md, docs/intents/README.md, README.md, tests/ingest_pipeline.rs, tests/dive_pipeline.rs, src/client.rs
 - **Commit:** `a82da805c7f6caf882fba2085858afee39a9c1e7`
+
+## T-601 — (sprint 6)
+- **Intent:** [INT-0006](../intents/INT-0006-reconcile-review-hardening.md)
+- **Completed:** 2026-08-29
+- **Touched:** src/store.rs, docs/intents/INT-0006-reconcile-review-hardening.md
+- **Commit:** PENDING
