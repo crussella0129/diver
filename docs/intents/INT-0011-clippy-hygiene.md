@@ -2,10 +2,10 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0011
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 10 build plan](../sprints/s10/sprint-plans/build-plan.md) (T-1001)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-1001 completion](../work/completed-tasks.md#t-1001--sprint-10)
+- **Code evidence:** [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs)
 - **Test evidence:** [Sprint 10 test report](../sprints/s10/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
@@ -59,3 +59,5 @@ polluting a feature sprint's history, and restores clippy output to signal
 - 2026-08-31: created as `proposed`.
 - 2026-08-31: `proposed` → `planned`; linked to Sprint 10 build plan (T-1001).
 - 2026-08-31: `planned` → `active` (Sprint 10 build; T-1001).
+- 2026-08-31: `active` → `realized` (Sprint 10: all 7 clippy warnings cleared —
+  `cargo clippy --workspace --all-targets` = 0; lint-only, 94 tests still green).
