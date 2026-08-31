@@ -10,6 +10,7 @@
   - [INT-0007 Restructure into a Cargo workspace](intents/INT-0007-workspace-restructure.md)
   - [INT-0008 Typestate assertion core](intents/INT-0008-typestate-assertion-core.md)
   - [INT-0009 LLM-backed claim extractor](intents/INT-0009-llm-claim-extractor.md)
+  - [INT-0010 Persist the epistemic layer](intents/INT-0010-persist-epistemic-layer.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -21,3 +22,4 @@
 - [Sprint 6](sprints/s6/sprint-meta.md)
 - [Sprint 7](sprints/s7/sprint-meta.md)
 - [Sprint 8](sprints/s8/sprint-meta.md)
+- [Sprint 9](sprints/s9/sprint-meta.md)

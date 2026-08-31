@@ -15,3 +15,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0007](INT-0007-workspace-restructure.md) | Restructure into a Cargo workspace | realized |
 | [INT-0008](INT-0008-typestate-assertion-core.md) | Typestate assertion core | realized |
 | [INT-0009](INT-0009-llm-claim-extractor.md) | LLM-backed claim extractor | realized |
+| [INT-0010](INT-0010-persist-epistemic-layer.md) | Persist the epistemic layer | planned |
