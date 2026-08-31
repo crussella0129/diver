@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0009
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 8 build plan](../sprints/s8/sprint-plans/build-plan.md) (T-801, T-802, T-803)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -103,3 +103,4 @@ layer valuable and what the future graph and synthesis layers will consume.
 - 2026-08-31: created as `proposed`.
 - 2026-08-31: `proposed` → `planned`; linked to Sprint 8 build plan (T-801
   `parse_claims` + grounding, T-802 `LlmExtractor`, T-803 CLI `--deterministic`).
+- 2026-08-31: `planned` → `active` (Sprint 8 build started; T-801 first).

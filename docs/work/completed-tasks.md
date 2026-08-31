@@ -209,3 +209,9 @@
 - **Completed:** 2026-08-30
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, diver-core/tests/extract_pipeline.rs
 - **Commit:** `00e797daa3ebf7d587b84ad3a58e911fd72ebfc5`
+
+## T-801 — (sprint 8)
+- **Intent:** [INT-0009](../intents/INT-0009-llm-claim-extractor.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/extract.rs, diver-core/src/lib.rs
+- **Commit:** PENDING
