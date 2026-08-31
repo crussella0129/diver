@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0010
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 9 build plan](../sprints/s9/sprint-plans/build-plan.md) (T-901, T-902, T-903)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-901/T-902/T-903 completion](../work/completed-tasks.md#t-901--sprint-9)
+- **Code evidence:** [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 9 test report](../sprints/s9/sprint-tests/test-report.md)
-- **Documentation evidence:** none
+- **Documentation evidence:** [README.md](../../README.md) (`diver assertions`, `diver extract` persistence)
 
 ## Intent
 
@@ -97,3 +97,7 @@ knowledge, so downstream consumers of the store inherit that guarantee.
   + `save_assertions`, T-902 `get_assertions`, T-903 CLI persist + `diver
   assertions`).
 - 2026-08-31: `planned` → `active` (Sprint 9 build started; T-901 first).
+- 2026-08-31: `active` → `realized` (Sprint 9: `assertions` + `assertion_support`
+  tables; `save_assertions(&[Assertion<Supported>])` — idempotent per paper+version,
+  validated-only — and `get_assertions`; `diver extract` persists and `diver
+  assertions` reads back; 94 tests pass, FK cascade verified).
