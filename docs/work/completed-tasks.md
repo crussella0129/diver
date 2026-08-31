@@ -209,3 +209,21 @@
 - **Completed:** 2026-08-30
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, diver-core/tests/extract_pipeline.rs
 - **Commit:** `00e797daa3ebf7d587b84ad3a58e911fd72ebfc5`
+
+## T-801 — (sprint 8)
+- **Intent:** [INT-0009](../intents/INT-0009-llm-claim-extractor.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/extract.rs, diver-core/src/lib.rs
+- **Commit:** `3ee6fb496be0bf027d688d3acfb00dfbe8b888d1`
+
+## T-802 — (sprint 8)
+- **Intent:** [INT-0009](../intents/INT-0009-llm-claim-extractor.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/extract.rs
+- **Commit:** `a00bc5a3bfc7c1cc092fc88e2582296f3f4c71d4`
+
+## T-803 — (sprint 8)
+- **Intent:** [INT-0009](../intents/INT-0009-llm-claim-extractor.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/llm_extract_pipeline.rs
+- **Commit:** `e9017ec110b54d93a706da0cc810759c04b6ecbf`

@@ -14,3 +14,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0006](INT-0006-reconcile-review-hardening.md) | Reconcile out-of-loop review hardening | realized |
 | [INT-0007](INT-0007-workspace-restructure.md) | Restructure into a Cargo workspace | realized |
 | [INT-0008](INT-0008-typestate-assertion-core.md) | Typestate assertion core | realized |
+| [INT-0009](INT-0009-llm-claim-extractor.md) | LLM-backed claim extractor | realized |

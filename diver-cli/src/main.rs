@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use diver_core::assertion::candidate_assertions;
 use diver_core::client::ArxivClient;
 use diver_core::display;
+use diver_core::extract::LlmExtractor;
 use diver_core::fact::SourceFact;
 use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
@@ -48,6 +49,10 @@ enum Commands {
     Extract {
         /// ArXiv paper ID (e.g., 2301.00001)
         arxiv_id: String,
+
+        /// Use the offline sentence-splitter instead of the Claude API (no key needed)
+        #[arg(long)]
+        deterministic: bool,
     },
 
     /// List all ingested papers
@@ -143,13 +148,21 @@ async fn main() -> Result<()> {
             }
         }
 
-        Commands::Extract { arxiv_id } => {
+        Commands::Extract {
+            arxiv_id,
+            deterministic,
+        } => {
             let store = Store::open()?;
 
             match store.get(&arxiv_id)? {
                 Some(fact) => {
-                    let observations = extract_observations(&fact);
-                    let supported = candidate_assertions(&observations)
+                    let candidates = if deterministic {
+                        candidate_assertions(&extract_observations(&fact))
+                    } else {
+                        let extractor = LlmExtractor::from_env()?;
+                        extractor.extract(&fact).await?
+                    };
+                    let supported = candidates
                         .into_iter()
                         .filter_map(|candidate| candidate.validate().ok())
                         .collect::<Vec<_>>();
