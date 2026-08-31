@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0009
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 8 build plan](../sprints/s8/sprint-plans/build-plan.md) (T-801, T-802, T-803)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-801/T-802/T-803 completion](../work/completed-tasks.md#t-801--sprint-8)
+- **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 8 test report](../sprints/s8/sprint-tests/test-report.md)
-- **Documentation evidence:** none
+- **Documentation evidence:** [README.md](../../README.md) (`diver extract`, `--deterministic`, `ANTHROPIC_API_KEY`, `DIVER_MODEL`)
 
 ## Intent
 
@@ -104,3 +104,9 @@ layer valuable and what the future graph and synthesis layers will consume.
 - 2026-08-31: `proposed` → `planned`; linked to Sprint 8 build plan (T-801
   `parse_claims` + grounding, T-802 `LlmExtractor`, T-803 CLI `--deterministic`).
 - 2026-08-31: `planned` → `active` (Sprint 8 build started; T-801 first).
+- 2026-08-31: `active` → `realized` (Sprint 8: `LlmExtractor` calls the Claude
+  Messages API over raw HTTP, `parse_claims` grounds claims against the abstract
+  and feeds the existing `validate()` gate, `diver extract` defaults to LLM with a
+  `--deterministic` fallback; 86 tests pass. Live HTTP call covered by the
+  parse→validate integration test plus a documented manual run — see test
+  report / critique C-001).
