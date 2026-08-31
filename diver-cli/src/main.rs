@@ -1,9 +1,11 @@
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 
+use diver_core::assertion::candidate_assertions;
 use diver_core::client::ArxivClient;
 use diver_core::display;
 use diver_core::fact::SourceFact;
+use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
 use diver_core::store::Store;
 
@@ -38,6 +40,12 @@ enum Commands {
 
     /// Inspect a stored paper's full metadata
     Inspect {
+        /// ArXiv paper ID (e.g., 2301.00001)
+        arxiv_id: String,
+    },
+
+    /// Extract supported assertions from a stored paper's abstract
+    Extract {
         /// ArXiv paper ID (e.g., 2301.00001)
         arxiv_id: String,
     },
@@ -130,6 +138,22 @@ async fn main() -> Result<()> {
                 Some(fact) => {
                     let versions = store.get_versions(&arxiv_id)?;
                     display::display_fact(&fact, &versions);
+                }
+                None => bail!("Paper not found: {arxiv_id}"),
+            }
+        }
+
+        Commands::Extract { arxiv_id } => {
+            let store = Store::open()?;
+
+            match store.get(&arxiv_id)? {
+                Some(fact) => {
+                    let observations = extract_observations(&fact);
+                    let supported = candidate_assertions(&observations)
+                        .into_iter()
+                        .filter_map(|candidate| candidate.validate().ok())
+                        .collect::<Vec<_>>();
+                    display::display_extract(&fact.arxiv_id, &supported);
                 }
                 None => bail!("Paper not found: {arxiv_id}"),
             }

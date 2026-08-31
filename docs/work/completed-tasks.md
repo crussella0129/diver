@@ -191,3 +191,21 @@
 - **Completed:** 2026-08-29
 - **Touched:** diver-cli/Cargo.toml (new, [[bin]] name = "diver"), diver-cli/src/main.rs (moved from src/, imports repointed to diver_core::), Cargo.toml (added diver-cli member), Cargo.lock
 - **Commit:** `beea18cb233490285d4046a4b7a0c3d285f574fd`
+
+## T-701 — (sprint 7)
+- **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
+- **Completed:** 2026-08-30
+- **Touched:** diver-core/src/observation.rs, diver-core/src/id.rs, diver-core/src/lib.rs
+- **Commit:** `f9c66b6f1d5eff336ed7459c5fda3e7bd2938052`
+
+## T-702 — (sprint 7)
+- **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
+- **Completed:** 2026-08-30
+- **Touched:** diver-core/src/assertion.rs, diver-core/src/lib.rs
+- **Commit:** `8ba66cc8cd87c2bfc0f3cb7b2a5bb0440e522a35`
+
+## T-703 — (sprint 7)
+- **Intent:** [INT-0008](../intents/INT-0008-typestate-assertion-core.md)
+- **Completed:** 2026-08-30
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, diver-core/tests/extract_pipeline.rs
+- **Commit:** `00e797daa3ebf7d587b84ad3a58e911fd72ebfc5`

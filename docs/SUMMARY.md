@@ -8,6 +8,7 @@
   - [INT-0005 Harden factual substrate](intents/INT-0005-harden-factual-substrate.md)
   - [INT-0006 Reconcile out-of-loop review hardening](intents/INT-0006-reconcile-review-hardening.md)
   - [INT-0007 Restructure into a Cargo workspace](intents/INT-0007-workspace-restructure.md)
+  - [INT-0008 Typestate assertion core](intents/INT-0008-typestate-assertion-core.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -17,3 +18,4 @@
 - [Sprint 4](sprints/s4/sprint-meta.md)
 - [Sprint 5](sprints/s5/sprint-meta.md)
 - [Sprint 6](sprints/s6/sprint-meta.md)
+- [Sprint 7](sprints/s7/sprint-meta.md)
