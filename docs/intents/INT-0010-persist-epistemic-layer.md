@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0010
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 9 build plan](../sprints/s9/sprint-plans/build-plan.md) (T-901, T-902, T-903)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -96,3 +96,4 @@ knowledge, so downstream consumers of the store inherit that guarantee.
 - 2026-08-31: `proposed` → `planned`; linked to Sprint 9 build plan (T-901 schema
   + `save_assertions`, T-902 `get_assertions`, T-903 CLI persist + `diver
   assertions`).
+- 2026-08-31: `planned` → `active` (Sprint 9 build started; T-901 first).

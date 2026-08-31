@@ -227,3 +227,9 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/llm_extract_pipeline.rs
 - **Commit:** `e9017ec110b54d93a706da0cc810759c04b6ecbf`
+
+## T-901 — (sprint 9)
+- **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/store.rs
+- **Commit:** PENDING
