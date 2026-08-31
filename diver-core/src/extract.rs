@@ -17,6 +17,108 @@ use crate::fact::SourceFact;
 use crate::id::{ArxivId, ArxivVersion};
 use crate::observation::Observation;
 
+/// Default model when `DIVER_MODEL` is unset. Per Anthropic guidance, default to
+/// the most capable model; the user downgrades via `DIVER_MODEL` for cost.
+const DEFAULT_MODEL: &str = "claude-opus-5";
+
+/// Anthropic Messages API endpoint.
+const MESSAGES_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+
+/// Instruction to Claude: extract grounded claims as a JSON array.
+const SYSTEM_PROMPT: &str = "You extract the discrete factual claims a research \
+paper's abstract asserts. Return ONLY a JSON array. Each element is an object with \
+two string fields: \"claim\" (one self-contained factual statement, in your own \
+words) and \"quote\" (a span copied verbatim from the abstract that supports the \
+claim). Copy each quote exactly as it appears. Do not invent claims the abstract \
+does not support. If the abstract makes no factual claims, return [].";
+
+/// Extracts grounded candidate assertions from a paper's abstract by asking Claude.
+///
+/// The network call is thin glue over the pure [`parse_claims`]; construct with
+/// [`LlmExtractor::from_env`] (reads `ANTHROPIC_API_KEY`, optional `DIVER_MODEL`).
+pub struct LlmExtractor {
+    http: reqwest::Client,
+    model: String,
+    api_key: String,
+}
+
+// Manual Debug that redacts the API key — never print the secret.
+impl std::fmt::Debug for LlmExtractor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LlmExtractor")
+            .field("model", &self.model)
+            .field("api_key", &"<redacted>")
+            .finish()
+    }
+}
+
+impl LlmExtractor {
+    /// Build from environment: `ANTHROPIC_API_KEY` (required) and `DIVER_MODEL`
+    /// (optional, defaults to [`DEFAULT_MODEL`]).
+    pub fn from_env() -> Result<Self> {
+        Self::build(
+            std::env::var("ANTHROPIC_API_KEY").ok(),
+            std::env::var("DIVER_MODEL").ok(),
+        )
+    }
+
+    /// Pure construction logic (env-reading split out for testability). A missing
+    /// or blank key is an actionable error; a missing/blank model falls back to
+    /// [`DEFAULT_MODEL`].
+    fn build(api_key: Option<String>, model: Option<String>) -> Result<Self> {
+        let api_key = api_key.filter(|k| !k.trim().is_empty()).context(
+            "ANTHROPIC_API_KEY is not set — set it to use LLM extraction, or run \
+             `diver extract <id> --deterministic` for the offline extractor",
+        )?;
+        let model = model
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        let http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .context("failed to build HTTP client")?;
+        Ok(Self {
+            http,
+            model,
+            api_key,
+        })
+    }
+
+    /// Ask Claude to extract grounded candidate assertions from `fact`'s abstract.
+    pub async fn extract(&self, fact: &SourceFact) -> Result<Vec<Assertion<Candidate>>> {
+        let user_content = format!("Abstract of \"{}\":\n\n{}", fact.title, fact.summary);
+        let body = serde_json::json!({
+            "model": self.model,
+            "max_tokens": 2048,
+            "system": SYSTEM_PROMPT,
+            "messages": [{ "role": "user", "content": user_content }],
+        })
+        .to_string();
+
+        let response = self
+            .http
+            .post(MESSAGES_ENDPOINT)
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .body(body)
+            .send()
+            .await
+            .context("failed to reach the Anthropic API")?;
+
+        let status = response.status();
+        let text = response
+            .text()
+            .await
+            .context("failed to read Anthropic API response body")?;
+        if !status.is_success() {
+            anyhow::bail!("Anthropic API returned HTTP {status}: {text}");
+        }
+
+        parse_claims(&text, fact)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct MessagesResponse {
     #[serde(default)]
@@ -240,5 +342,34 @@ mod tests {
             "a paper about attention"
         ));
         assert!(!is_grounded("", "any summary"));
+    }
+
+    #[test]
+    fn test_build_missing_key_errors() {
+        let err = LlmExtractor::build(None, None).unwrap_err().to_string();
+        assert!(err.contains("ANTHROPIC_API_KEY"), "got: {err}");
+        // A blank/whitespace key is treated as absent.
+        let err_blank = LlmExtractor::build(Some("   ".to_string()), None)
+            .unwrap_err()
+            .to_string();
+        assert!(err_blank.contains("ANTHROPIC_API_KEY"), "got: {err_blank}");
+    }
+
+    #[test]
+    fn test_build_model_default_and_override() {
+        let default = LlmExtractor::build(Some("sk-test".to_string()), None).unwrap();
+        assert_eq!(default.model, "claude-opus-5");
+
+        let overridden = LlmExtractor::build(
+            Some("sk-test".to_string()),
+            Some("claude-haiku-4-5".to_string()),
+        )
+        .unwrap();
+        assert_eq!(overridden.model, "claude-haiku-4-5");
+
+        // A blank model falls back to the default.
+        let blank =
+            LlmExtractor::build(Some("sk-test".to_string()), Some("  ".to_string())).unwrap();
+        assert_eq!(blank.model, "claude-opus-5");
     }
 }
