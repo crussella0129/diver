@@ -250,4 +250,4 @@
 - **Intent:** [INT-0011](../intents/INT-0011-clippy-hygiene.md)
 - **Completed:** 2026-08-31
 - **Touched:** diver-core/src/store.rs, diver-core/src/display.rs
-- **Commit:** PENDING
+- **Commit:** `d186c0f4c6aeb02943cd2680e05ee8596b0a9444`
