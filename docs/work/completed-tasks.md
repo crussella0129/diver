@@ -244,4 +244,4 @@
 - **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
 - **Completed:** 2026-08-31
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/persist_pipeline.rs
-- **Commit:** PENDING
+- **Commit:** `75eb8b0284b83cae4d8617298ac8cfb25113c476`
