@@ -226,4 +226,4 @@
 - **Intent:** [INT-0009](../intents/INT-0009-llm-claim-extractor.md)
 - **Completed:** 2026-08-31
 - **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/llm_extract_pipeline.rs
-- **Commit:** PENDING
+- **Commit:** `e9017ec110b54d93a706da0cc810759c04b6ecbf`
