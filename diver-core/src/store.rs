@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
+use chrono::Utc;
 use rusqlite::Connection;
 
+use crate::assertion::{Assertion, Supported};
 use crate::fact::SourceFact;
 
 #[derive(Debug, Clone)]
@@ -11,6 +13,15 @@ pub struct SearchResult {
     pub summary: String,
     pub primary_category: String,
     pub rank: f64,
+}
+
+/// A previously-validated assertion loaded from storage for display. Its
+/// existence in the store means it was persisted as an `Assertion<Supported>`.
+#[derive(Debug, Clone)]
+pub struct StoredAssertion {
+    pub claim: String,
+    pub version: String,
+    pub support: Vec<String>,
 }
 
 pub struct Store {
@@ -71,7 +82,21 @@ impl Store {
                 );
 
                 CREATE VIRTUAL TABLE IF NOT EXISTS paper_versions_fts
-                USING fts5(arxiv_id, title, authors, summary, primary_category);",
+                USING fts5(arxiv_id, title, authors, summary, primary_category);
+
+                CREATE TABLE IF NOT EXISTS assertions (
+                    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paper_id   INTEGER NOT NULL REFERENCES papers(id),
+                    version    TEXT NOT NULL,
+                    claim      TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS assertion_support (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    assertion_id INTEGER NOT NULL REFERENCES assertions(id) ON DELETE CASCADE,
+                    quote        TEXT NOT NULL
+                );",
             )
             .context("failed to initialize database schema")?;
 
@@ -376,6 +401,133 @@ impl Store {
         }
         Ok(results)
     }
+
+    /// Persist the supported assertions extracted for a paper version. The
+    /// `&[Assertion<Supported>]` parameter is the storage gate — only validated
+    /// assertions can be stored. Idempotent per `(paper, version)`: a prior set
+    /// for the same paper+version is replaced (support cascades on delete).
+    pub fn save_assertions(
+        &self,
+        arxiv_id: &str,
+        version: &str,
+        assertions: &[Assertion<Supported>],
+    ) -> Result<()> {
+        self.conn
+            .execute_batch("BEGIN;")
+            .context("failed to begin transaction")?;
+
+        let result = (|| -> Result<()> {
+            self.conn
+                .execute(
+                    "INSERT OR IGNORE INTO papers (arxiv_id) VALUES (?1)",
+                    rusqlite::params![arxiv_id],
+                )
+                .context("failed to upsert papers row")?;
+
+            let paper_id: i64 = self
+                .conn
+                .query_row(
+                    "SELECT id FROM papers WHERE arxiv_id = ?1",
+                    rusqlite::params![arxiv_id],
+                    |row| row.get(0),
+                )
+                .context("failed to retrieve paper_id")?;
+
+            // Idempotent replace: drop the prior set for this paper+version.
+            // assertion_support rows cascade via ON DELETE CASCADE.
+            self.conn
+                .execute(
+                    "DELETE FROM assertions WHERE paper_id = ?1 AND version = ?2",
+                    rusqlite::params![paper_id, version],
+                )
+                .context("failed to clear prior assertions")?;
+
+            let created_at = Utc::now().to_rfc3339();
+            for assertion in assertions {
+                self.conn
+                    .execute(
+                        "INSERT INTO assertions (paper_id, version, claim, created_at)
+                         VALUES (?1, ?2, ?3, ?4)",
+                        rusqlite::params![paper_id, version, assertion.claim(), created_at],
+                    )
+                    .context("failed to insert assertion")?;
+                let assertion_id = self.conn.last_insert_rowid();
+
+                for obs in assertion.support() {
+                    self.conn
+                        .execute(
+                            "INSERT INTO assertion_support (assertion_id, quote) VALUES (?1, ?2)",
+                            rusqlite::params![assertion_id, obs.text()],
+                        )
+                        .context("failed to insert assertion support")?;
+                }
+            }
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                self.conn
+                    .execute_batch("COMMIT;")
+                    .context("failed to commit transaction")?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK;");
+                Err(e)
+            }
+        }
+    }
+
+    /// Load the stored assertions for a paper (any version), newest first.
+    /// Returns an empty vec if the paper is unknown or has no stored assertions.
+    pub fn get_assertions(&self, arxiv_id: &str) -> Result<Vec<StoredAssertion>> {
+        // Collect the assertion heads first so the statement's borrow is released
+        // before we fetch each one's support quotes.
+        let heads: Vec<(i64, String, String)> = {
+            let mut stmt = self
+                .conn
+                .prepare(
+                    "SELECT a.id, a.version, a.claim
+                     FROM assertions a
+                     JOIN papers p ON p.id = a.paper_id
+                     WHERE p.arxiv_id = ?1
+                     ORDER BY a.created_at DESC, a.id DESC",
+                )
+                .context("failed to prepare get_assertions query")?;
+            let rows = stmt
+                .query_map(rusqlite::params![arxiv_id], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+                })
+                .context("failed to execute get_assertions query")?;
+            rows.collect::<std::result::Result<Vec<_>, _>>()
+                .context("failed to read assertion rows")?
+        };
+
+        let mut assertions = Vec::with_capacity(heads.len());
+        for (id, version, claim) in heads {
+            let support = self.support_quotes(id)?;
+            assertions.push(StoredAssertion {
+                claim,
+                version,
+                support,
+            });
+        }
+        Ok(assertions)
+    }
+
+    fn support_quotes(&self, assertion_id: i64) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT quote FROM assertion_support WHERE assertion_id = ?1 ORDER BY id")
+            .context("failed to prepare support query")?;
+        let quotes = stmt
+            .query_map(rusqlite::params![assertion_id], |row| row.get(0))
+            .context("failed to execute support query")?
+            .collect::<std::result::Result<Vec<String>, _>>()
+            .context("failed to collect support quotes")?;
+        Ok(quotes)
+    }
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
@@ -448,7 +600,157 @@ fn row_to_fact_raw(row: &rusqlite::Row<'_>) -> rusqlite::Result<Result<SourceFac
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::id::ArxivCategory;
+    use crate::assertion::Candidate;
+    use crate::id::{ArxivCategory, ArxivId, ArxivVersion};
+    use crate::observation::Observation;
+
+    /// Build a validated assertion for storage tests.
+    fn supported(claim: &str, quotes: &[&str]) -> Assertion<Supported> {
+        let support: Vec<Observation> = quotes
+            .iter()
+            .map(|q| Observation::new(ArxivId::new("2301.00001"), ArxivVersion(1), *q))
+            .collect();
+        Assertion::<Candidate>::new(claim, support)
+            .validate()
+            .expect("non-empty support validates")
+    }
+
+    fn count(store: &Store, sql: &str) -> i64 {
+        store.conn.query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn test_assertion_schema_created() {
+        let store = Store::open_in_memory().unwrap();
+        let n = count(
+            &store,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' \
+             AND name IN ('assertions', 'assertion_support')",
+        );
+        assert_eq!(n, 2);
+    }
+
+    #[test]
+    fn test_save_assertions_persists() {
+        let store = Store::open_in_memory().unwrap();
+        let assertions = vec![
+            supported(
+                "Attention improves accuracy.",
+                &["attention improves accuracy"],
+            ),
+            supported(
+                "Transformers scale well.",
+                &["transformers scale", "scale well"],
+            ),
+        ];
+        store
+            .save_assertions("2301.00001", "v2", &assertions)
+            .unwrap();
+
+        assert_eq!(count(&store, "SELECT COUNT(*) FROM assertions"), 2);
+        assert_eq!(count(&store, "SELECT COUNT(*) FROM assertion_support"), 3);
+
+        let claim: String = store
+            .conn
+            .query_row(
+                "SELECT claim FROM assertions ORDER BY id LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(claim, "Attention improves accuracy.");
+    }
+
+    #[test]
+    fn test_save_assertions_idempotent_replace() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v1",
+                &[
+                    supported("First.", &["first quote here"]),
+                    supported("Second.", &["second quote here"]),
+                ],
+            )
+            .unwrap();
+        // Re-save one different assertion for the same (paper, version).
+        store
+            .save_assertions(
+                "2301.00001",
+                "v1",
+                &[supported("Only.", &["only quote here"])],
+            )
+            .unwrap();
+
+        assert_eq!(
+            count(&store, "SELECT COUNT(*) FROM assertions"),
+            1,
+            "prior assertions must be replaced"
+        );
+        assert_eq!(
+            count(&store, "SELECT COUNT(*) FROM assertion_support"),
+            1,
+            "orphaned support rows must be cascade-deleted"
+        );
+    }
+
+    #[test]
+    fn test_assertion_support_fk_enforced() {
+        let store = Store::open_in_memory().unwrap();
+        let result = store.conn.execute(
+            "INSERT INTO assertion_support (assertion_id, quote) VALUES (99999, 'orphan')",
+            [],
+        );
+        assert!(result.is_err(), "orphan assertion_id must be rejected");
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("FOREIGN KEY"),
+            "expected FK violation, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_get_assertions_round_trip() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v2",
+                &[
+                    supported(
+                        "Attention improves accuracy.",
+                        &["attention improves accuracy"],
+                    ),
+                    supported("It scales.", &["it scales well", "linear scaling"]),
+                ],
+            )
+            .unwrap();
+
+        let stored = store.get_assertions("2301.00001").unwrap();
+        assert_eq!(stored.len(), 2);
+        assert!(stored.iter().all(|s| s.version == "v2"));
+
+        let claims: Vec<&str> = stored.iter().map(|s| s.claim.as_str()).collect();
+        assert!(claims.contains(&"Attention improves accuracy."));
+        assert!(claims.contains(&"It scales."));
+
+        let scales = stored.iter().find(|s| s.claim == "It scales.").unwrap();
+        assert_eq!(scales.support.len(), 2);
+        assert!(scales.support.contains(&"it scales well".to_string()));
+    }
+
+    #[test]
+    fn test_get_assertions_unknown_empty() {
+        let store = Store::open_in_memory().unwrap();
+        // Unknown paper.
+        assert!(store.get_assertions("9999.99999").unwrap().is_empty());
+        // Known paper with no stored assertions.
+        store
+            .save(&test_fact("2301.00001", "v1", "T", "2026-08-31T00:00:00Z"))
+            .unwrap();
+        assert!(store.get_assertions("2301.00001").unwrap().is_empty());
+    }
 
     fn test_fact(id: &str, version: &str, title: &str, ingested_at: &str) -> SourceFact {
         let primary = ArxivCategory::parse("cs.CL").unwrap();

@@ -10,7 +10,8 @@ Find knowledge, not just papers, on ArXiv
 | `diver ingest <arxiv-id>` | Ingest a single paper by arXiv ID |
 | `diver find <query>` | Search your local corpus (FTS) |
 | `diver inspect <arxiv-id>` | Show full metadata, taxonomy-resolved categories, and version history |
-| `diver extract <arxiv-id>` | Extract grounded, supported claims from a stored paper's abstract (uses the Claude API) |
+| `diver extract <arxiv-id>` | Extract grounded, supported claims from a stored paper's abstract (uses the Claude API) and persist them |
+| `diver assertions <arxiv-id>` | Show the assertions previously extracted and stored for a paper |
 | `diver list` | List all ingested papers |
 
 > **Note:** `diver dive` is reserved for a future sprint — graph traversal is not yet implemented.
@@ -31,9 +32,16 @@ shown.
 
 ```sh
 export ANTHROPIC_API_KEY=sk-ant-...
-diver extract 2301.00001                 # LLM extraction (default)
+diver extract 2301.00001                 # LLM extraction (default), persists results
 diver extract 2301.00001 --deterministic # offline, no API call
+diver assertions 2301.00001              # show the stored assertions
 ```
+
+`diver extract` **persists** the supported assertions it produces (idempotently
+per paper+version — re-extracting replaces the prior set), so `diver assertions`
+reads them back without re-running extraction. Only validated assertions are
+stored: `Store::save_assertions` accepts a `&[Assertion<Supported>]`, so the
+database can only ever hold claims that passed the validation gate.
 
 ## Database compatibility
 

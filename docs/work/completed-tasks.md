@@ -227,3 +227,21 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/llm_extract_pipeline.rs
 - **Commit:** `e9017ec110b54d93a706da0cc810759c04b6ecbf`
+
+## T-901 — (sprint 9)
+- **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/store.rs
+- **Commit:** `ee4ca77e49aa2ad566ea90d8f9c7c2b66c5dba9a`
+
+## T-902 — (sprint 9)
+- **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/store.rs
+- **Commit:** `1e95b15d45e567668cb98d1cf8e64648dc56cb84`
+
+## T-903 — (sprint 9)
+- **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/persist_pipeline.rs
+- **Commit:** `75eb8b0284b83cae4d8617298ac8cfb25113c476`
