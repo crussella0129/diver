@@ -478,6 +478,56 @@ impl Store {
             }
         }
     }
+
+    /// Load the stored assertions for a paper (any version), newest first.
+    /// Returns an empty vec if the paper is unknown or has no stored assertions.
+    pub fn get_assertions(&self, arxiv_id: &str) -> Result<Vec<StoredAssertion>> {
+        // Collect the assertion heads first so the statement's borrow is released
+        // before we fetch each one's support quotes.
+        let heads: Vec<(i64, String, String)> = {
+            let mut stmt = self
+                .conn
+                .prepare(
+                    "SELECT a.id, a.version, a.claim
+                     FROM assertions a
+                     JOIN papers p ON p.id = a.paper_id
+                     WHERE p.arxiv_id = ?1
+                     ORDER BY a.created_at DESC, a.id DESC",
+                )
+                .context("failed to prepare get_assertions query")?;
+            let rows = stmt
+                .query_map(rusqlite::params![arxiv_id], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+                })
+                .context("failed to execute get_assertions query")?;
+            rows.collect::<std::result::Result<Vec<_>, _>>()
+                .context("failed to read assertion rows")?
+        };
+
+        let mut assertions = Vec::with_capacity(heads.len());
+        for (id, version, claim) in heads {
+            let support = self.support_quotes(id)?;
+            assertions.push(StoredAssertion {
+                claim,
+                version,
+                support,
+            });
+        }
+        Ok(assertions)
+    }
+
+    fn support_quotes(&self, assertion_id: i64) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT quote FROM assertion_support WHERE assertion_id = ?1 ORDER BY id")
+            .context("failed to prepare support query")?;
+        let quotes = stmt
+            .query_map(rusqlite::params![assertion_id], |row| row.get(0))
+            .context("failed to execute support query")?
+            .collect::<std::result::Result<Vec<String>, _>>()
+            .context("failed to collect support quotes")?;
+        Ok(quotes)
+    }
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
@@ -658,6 +708,48 @@ mod tests {
             msg.contains("FOREIGN KEY"),
             "expected FK violation, got: {msg}"
         );
+    }
+
+    #[test]
+    fn test_get_assertions_round_trip() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v2",
+                &[
+                    supported(
+                        "Attention improves accuracy.",
+                        &["attention improves accuracy"],
+                    ),
+                    supported("It scales.", &["it scales well", "linear scaling"]),
+                ],
+            )
+            .unwrap();
+
+        let stored = store.get_assertions("2301.00001").unwrap();
+        assert_eq!(stored.len(), 2);
+        assert!(stored.iter().all(|s| s.version == "v2"));
+
+        let claims: Vec<&str> = stored.iter().map(|s| s.claim.as_str()).collect();
+        assert!(claims.contains(&"Attention improves accuracy."));
+        assert!(claims.contains(&"It scales."));
+
+        let scales = stored.iter().find(|s| s.claim == "It scales.").unwrap();
+        assert_eq!(scales.support.len(), 2);
+        assert!(scales.support.contains(&"it scales well".to_string()));
+    }
+
+    #[test]
+    fn test_get_assertions_unknown_empty() {
+        let store = Store::open_in_memory().unwrap();
+        // Unknown paper.
+        assert!(store.get_assertions("9999.99999").unwrap().is_empty());
+        // Known paper with no stored assertions.
+        store
+            .save(&test_fact("2301.00001", "v1", "T", "2026-08-31T00:00:00Z"))
+            .unwrap();
+        assert!(store.get_assertions("2301.00001").unwrap().is_empty());
     }
 
     fn test_fact(id: &str, version: &str, title: &str, ingested_at: &str) -> SourceFact {
