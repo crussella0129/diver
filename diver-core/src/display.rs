@@ -4,7 +4,7 @@ use crate::assertion::{Assertion, Supported};
 use crate::fact::SourceFact;
 use crate::id::ArxivCategory;
 use crate::model::Paper;
-use crate::store::SearchResult;
+use crate::store::{SearchResult, StoredAssertion};
 
 pub fn display_results(papers: &[Paper], total: u32) {
     if papers.is_empty() {
@@ -101,6 +101,30 @@ pub fn display_extract(arxiv_id: &str, supported: &[Assertion<Supported>]) {
                 "    {}",
                 format!("— {} {}", obs.arxiv_id(), obs.version()).dimmed()
             );
+        }
+        println!();
+    }
+}
+
+/// Display the assertions persisted for a paper (claim, version, supporting quotes).
+pub fn display_stored_assertions(arxiv_id: &str, assertions: &[StoredAssertion]) {
+    println!("{}", format!("Stored assertions for {arxiv_id}").bold());
+    println!();
+
+    if assertions.is_empty() {
+        println!(
+            "  {}",
+            format!("No stored assertions for {arxiv_id}.").dimmed()
+        );
+        return;
+    }
+
+    for (i, assertion) in assertions.iter().enumerate() {
+        println!("{}", format!("[{}]", i + 1).dimmed());
+        println!("  {}", assertion.claim);
+        println!("    {}", format!("({})", assertion.version).dimmed());
+        for quote in &assertion.support {
+            println!("    {}", format!("\u{2014} \"{quote}\"").dimmed());
         }
         println!();
     }

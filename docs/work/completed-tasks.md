@@ -239,3 +239,9 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-core/src/store.rs
 - **Commit:** `1e95b15d45e567668cb98d1cf8e64648dc56cb84`
+
+## T-903 — (sprint 9)
+- **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/persist_pipeline.rs
+- **Commit:** PENDING

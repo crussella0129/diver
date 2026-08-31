@@ -55,6 +55,12 @@ enum Commands {
         deterministic: bool,
     },
 
+    /// Show the assertions previously extracted and stored for a paper
+    Assertions {
+        /// ArXiv paper ID (e.g., 2301.00001)
+        arxiv_id: String,
+    },
+
     /// List all ingested papers
     List,
 
@@ -166,10 +172,17 @@ async fn main() -> Result<()> {
                         .into_iter()
                         .filter_map(|candidate| candidate.validate().ok())
                         .collect::<Vec<_>>();
+                    store.save_assertions(&fact.arxiv_id, &fact.arxiv_version, &supported)?;
                     display::display_extract(&fact.arxiv_id, &supported);
                 }
                 None => bail!("Paper not found: {arxiv_id}"),
             }
+        }
+
+        Commands::Assertions { arxiv_id } => {
+            let store = Store::open()?;
+            let stored = store.get_assertions(&arxiv_id)?;
+            display::display_stored_assertions(&arxiv_id, &stored);
         }
 
         Commands::List => {
