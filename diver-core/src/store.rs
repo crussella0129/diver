@@ -333,7 +333,7 @@ impl Store {
             .context("failed to prepare list query")?;
 
         let facts = stmt
-            .query_map([], |row| row_to_fact(row))
+            .query_map([], row_to_fact)
             .context("failed to execute list query")?;
 
         let mut result = Vec::new();

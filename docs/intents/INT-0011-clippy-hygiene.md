@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0011
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 10 build plan](../sprints/s10/sprint-plans/build-plan.md) (T-1001)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -58,3 +58,4 @@ polluting a feature sprint's history, and restores clippy output to signal
 ## Transition history
 - 2026-08-31: created as `proposed`.
 - 2026-08-31: `proposed` → `planned`; linked to Sprint 10 build plan (T-1001).
+- 2026-08-31: `planned` → `active` (Sprint 10 build; T-1001).
