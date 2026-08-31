@@ -232,4 +232,4 @@
 - **Intent:** [INT-0010](../intents/INT-0010-persist-epistemic-layer.md)
 - **Completed:** 2026-08-31
 - **Touched:** diver-core/src/store.rs
-- **Commit:** PENDING
+- **Commit:** `ee4ca77e49aa2ad566ea90d8f9c7c2b66c5dba9a`
