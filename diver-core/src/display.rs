@@ -134,6 +134,12 @@ pub fn display_stored_assertions(arxiv_id: &str, assertions: &[StoredAssertion])
 /// How many related papers to list per dive node before summarizing the rest.
 const DIVE_RELATED_CAP: usize = 10;
 
+/// How many related entries overflow the display cap, if any (`None` when the
+/// count fits within `cap`).
+fn related_overflow(count: usize, cap: usize) -> Option<usize> {
+    (count > cap).then(|| count - cap)
+}
+
 fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
@@ -170,8 +176,7 @@ pub fn display_dive(concept: &str, nodes: &[DiveNode]) {
                     format!("{other} \u{2014} {}", relation_reason(kind)).dimmed()
                 );
             }
-            if node.related.len() > DIVE_RELATED_CAP {
-                let more = node.related.len() - DIVE_RELATED_CAP;
+            if let Some(more) = related_overflow(node.related.len(), DIVE_RELATED_CAP) {
                 println!("      {}", format!("(+{more} more)").dimmed());
             }
         }
@@ -269,6 +274,18 @@ fn truncate_abstract(text: &str, max_len: usize) -> String {
 mod tests {
     use super::*;
     use crate::model::Paper;
+
+    #[test]
+    fn test_related_overflow() {
+        assert_eq!(related_overflow(5, 10), None);
+        assert_eq!(
+            related_overflow(10, 10),
+            None,
+            "count == cap does not overflow"
+        );
+        assert_eq!(related_overflow(11, 10), Some(1));
+        assert_eq!(related_overflow(25, 10), Some(15));
+    }
 
     fn make_paper(summary: &str) -> Paper {
         Paper {

@@ -42,34 +42,46 @@ pub struct DiveNode {
 /// [`RelationKind::SharedAuthor`] edge per shared author, for each unordered pair
 /// (`i < j`). No self-edges (pairs with the same `arxiv_id` are skipped).
 pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
+    // Deduplicate each paper's category codes and authors once. arXiv author lists
+    // are not deduplicated upstream (unlike categories), so without this a repeated
+    // author would yield duplicate edges.
+    let categories: Vec<Vec<&str>> = facts
+        .iter()
+        .map(|f| dedup_preserve_order(f.categories.iter().map(|c| c.code())))
+        .collect();
+    let authors: Vec<Vec<&str>> = facts
+        .iter()
+        .map(|f| dedup_preserve_order(f.authors.iter().map(|s| s.as_str())))
+        .collect();
+
     let mut relations = Vec::new();
 
     for i in 0..facts.len() {
+        // Build paper i's lookup sets once, not once per inner-loop iteration.
+        let a_categories: HashSet<&str> = categories[i].iter().copied().collect();
+        let a_authors: HashSet<&str> = authors[i].iter().copied().collect();
+
         for j in (i + 1)..facts.len() {
-            let a = &facts[i];
-            let b = &facts[j];
-            if a.arxiv_id == b.arxiv_id {
+            if facts[i].arxiv_id == facts[j].arxiv_id {
                 continue;
             }
 
-            let a_categories: HashSet<&str> = a.categories.iter().map(|c| c.code()).collect();
-            for category in &b.categories {
-                if a_categories.contains(category.code()) {
+            for &code in &categories[j] {
+                if a_categories.contains(code) {
                     relations.push(ComputedRelation {
-                        from: a.arxiv_id.clone(),
-                        to: b.arxiv_id.clone(),
-                        kind: RelationKind::SharedCategory(category.code().to_string()),
+                        from: facts[i].arxiv_id.clone(),
+                        to: facts[j].arxiv_id.clone(),
+                        kind: RelationKind::SharedCategory(code.to_string()),
                     });
                 }
             }
 
-            let a_authors: HashSet<&str> = a.authors.iter().map(|s| s.as_str()).collect();
-            for author in &b.authors {
-                if a_authors.contains(author.as_str()) {
+            for &author in &authors[j] {
+                if a_authors.contains(author) {
                     relations.push(ComputedRelation {
-                        from: a.arxiv_id.clone(),
-                        to: b.arxiv_id.clone(),
-                        kind: RelationKind::SharedAuthor(author.clone()),
+                        from: facts[i].arxiv_id.clone(),
+                        to: facts[j].arxiv_id.clone(),
+                        kind: RelationKind::SharedAuthor(author.to_string()),
                     });
                 }
             }
@@ -77,6 +89,13 @@ pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
     }
 
     relations
+}
+
+/// Collect the items, keeping the first occurrence of each and dropping later
+/// duplicates while preserving order.
+fn dedup_preserve_order<'a>(items: impl Iterator<Item = &'a str>) -> Vec<&'a str> {
+    let mut seen = HashSet::new();
+    items.filter(|item| seen.insert(*item)).collect()
 }
 
 /// Assemble a concept neighborhood. `asserting` is `(arxiv_id, claim)` for each
@@ -178,6 +197,18 @@ mod tests {
         ];
         let rels = compute_relations(&facts);
         assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].kind, RelationKind::SharedAuthor("Bob".to_string()));
+    }
+
+    #[test]
+    fn test_compute_relations_dedups_repeated_author() {
+        // A paper whose author list repeats a name must not yield duplicate edges.
+        let facts = vec![
+            fact("2301.00001", "A", &["cs.CL"], &["Bob"]),
+            fact("2302.00002", "B", &["math.NA"], &["Bob", "Bob"]),
+        ];
+        let rels = compute_relations(&facts);
+        assert_eq!(rels.len(), 1, "repeated author must not duplicate the edge");
         assert_eq!(rels[0].kind, RelationKind::SharedAuthor("Bob".to_string()));
     }
 
