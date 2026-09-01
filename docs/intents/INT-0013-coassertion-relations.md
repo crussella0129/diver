@@ -6,7 +6,7 @@
 - **Work evidence:** [Sprint 12 build plan](../sprints/s12/sprint-plans/build-plan.md) (T-1201, T-1202, T-1203)
 - **Completion evidence:** none
 - **Code evidence:** none
-- **Test evidence:** none
+- **Test evidence:** [Sprint 12 test report](../sprints/s12/sprint-tests/test-report.md)
 - **Documentation evidence:** none
 
 ## Intent
