@@ -334,4 +334,4 @@
 - **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/extract.rs
-- **Commit:** PENDING
+- **Commit:** `2a9d56a159d7be7405d8021ee25108a08ab53950`
