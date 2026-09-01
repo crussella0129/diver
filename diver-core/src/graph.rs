@@ -158,14 +158,21 @@ const STOPWORDS: &[&str] = &[
     "where", "while", "does", "did", "been", "being", "here", "there", "your", "you",
 ];
 
-/// Extract a claim's significant terms: alphanumeric tokens, lowercased, of length
-/// >= 3, excluding [`STOPWORDS`]. Punctuation and case are ignored.
+/// Extract a claim's significant terms: alphanumeric tokens, lowercased, at least
+/// 3 chars long, containing at least one letter, excluding [`STOPWORDS`].
+/// Punctuation and case are ignored; pure-number tokens (e.g. "100", "2023") are
+/// dropped so shared figures do not spuriously link papers, while mixed tokens
+/// ("gpt3", "h100") survive.
 fn significant_terms(claim: &str) -> Vec<String> {
     claim
         .split(|c: char| !c.is_alphanumeric())
         .filter(|tok| !tok.is_empty())
         .map(|tok| tok.to_lowercase())
-        .filter(|tok| tok.chars().count() >= 3 && !STOPWORDS.contains(&tok.as_str()))
+        .filter(|tok| {
+            tok.chars().count() >= 3
+                && tok.chars().any(|c| c.is_alphabetic())
+                && !STOPWORDS.contains(&tok.as_str())
+        })
         .collect()
 }
 
@@ -200,17 +207,17 @@ pub fn compute_coassertion_relations(claims: &[(String, String)]) -> Vec<Compute
     let mut relations = Vec::new();
     for i in 0..papers.len() {
         let a_terms: HashSet<&str> = terms_by_paper[i].iter().map(|s| s.as_str()).collect();
+        // `papers` is distinct by construction (grouping above), so every (i, j)
+        // with i < j is a pair of different papers — no self-edge guard needed.
         for j in (i + 1)..papers.len() {
-            if papers[i] == papers[j] {
-                continue;
-            }
+            // `terms_by_paper[j]` is already deduplicated, so the filtered
+            // intersection is unique; sorting alone gives stable output.
             let mut shared: Vec<&str> = terms_by_paper[j]
                 .iter()
                 .map(|s| s.as_str())
                 .filter(|t| a_terms.contains(t))
                 .collect();
             shared.sort_unstable();
-            shared.dedup();
             for term in shared {
                 relations.push(ComputedRelation {
                     from: papers[i].clone(),
@@ -368,6 +375,12 @@ mod tests {
         );
         // Two-char tokens and stopwords are dropped.
         assert!(significant_terms("AI is ML").is_empty());
+        // Pure-number tokens are dropped (no letter); mixed alphanumerics survive.
+        assert_eq!(
+            significant_terms("Trained for 100 epochs on 2023 data with GPT3."),
+            vec!["trained", "epochs", "data", "gpt3"],
+            "'100'/'2023' dropped as pure numbers; 'gpt3' kept (has a letter)"
+        );
     }
 
     #[test]
