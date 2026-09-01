@@ -85,14 +85,17 @@ impl LlmExtractor {
         Ok(Self { http, config })
     }
 
-    /// Resolve a provider from the environment. For now this is the Anthropic env
-    /// fallback (`ANTHROPIC_API_KEY` / `DIVER_MODEL` / `ANTHROPIC_BASE_URL`); the
-    /// hot-loadable providers-config resolution layers in front of this (INT-0016 T-1502).
+    /// Resolve a provider from the environment: a hot-loadable providers config file
+    /// (`{config_dir}/diver/providers.json`, override `DIVER_PROVIDERS_CONFIG`) selects
+    /// the active provider (`DIVER_PROVIDER` or the file's `active`), reading its key
+    /// from the named `api_key_env`. With no config file, falls back to the Anthropic
+    /// env path (`ANTHROPIC_API_KEY` / `DIVER_MODEL` / `ANTHROPIC_BASE_URL`).
     pub fn from_env() -> Result<Self> {
-        let config = anthropic_config_from_env(
-            std::env::var("ANTHROPIC_API_KEY").ok(),
-            std::env::var("DIVER_MODEL").ok(),
-            std::env::var("ANTHROPIC_BASE_URL").ok(),
+        let contents = providers_config_path().and_then(|p| std::fs::read_to_string(p).ok());
+        let config = resolve_provider(
+            contents.as_deref(),
+            std::env::var("DIVER_PROVIDER").ok().as_deref(),
+            |k| std::env::var(k).ok(),
         )?;
         Self::from_config(config)
     }
@@ -203,6 +206,85 @@ fn anthropic_config_from_env(
         shape: ProviderShape::Anthropic,
         base_url,
         model,
+        api_key,
+    })
+}
+
+/// A hot-loadable providers config document: named providers + the active selection.
+/// API keys are **never** stored here — each provider names an `api_key_env`.
+#[derive(Debug, Deserialize)]
+struct ProvidersFile {
+    #[serde(default)]
+    active: Option<String>,
+    #[serde(default)]
+    providers: std::collections::HashMap<String, ProviderEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProviderEntry {
+    shape: String,
+    base_url: String,
+    model: String,
+    api_key_env: String,
+}
+
+/// Path to the providers config: `DIVER_PROVIDERS_CONFIG` if set, else
+/// `{config_dir}/diver/providers.json`.
+fn providers_config_path() -> Option<std::path::PathBuf> {
+    if let Ok(p) = std::env::var("DIVER_PROVIDERS_CONFIG")
+        && !p.trim().is_empty()
+    {
+        return Some(std::path::PathBuf::from(p));
+    }
+    dirs::config_dir().map(|d| d.join("diver").join("providers.json"))
+}
+
+/// Resolve a [`ProviderConfig`] from an optional providers-config document, an optional
+/// active selection (e.g. `DIVER_PROVIDER`), and an environment lookup (e.g.
+/// `std::env::var`). Pure — env/file are injected — so it is testable without mutating
+/// the process environment. With no config document, falls back to the Anthropic env path.
+fn resolve_provider(
+    file_contents: Option<&str>,
+    selection: Option<&str>,
+    env_lookup: impl Fn(&str) -> Option<String>,
+) -> Result<ProviderConfig> {
+    let Some(contents) = file_contents else {
+        return anthropic_config_from_env(
+            env_lookup("ANTHROPIC_API_KEY"),
+            env_lookup("DIVER_MODEL"),
+            env_lookup("ANTHROPIC_BASE_URL"),
+        );
+    };
+
+    let file: ProvidersFile =
+        serde_json::from_str(contents).context("failed to parse providers config JSON")?;
+    let name = selection
+        .map(str::to_string)
+        .or_else(|| file.active.clone())
+        .context("no active provider: set DIVER_PROVIDER or the config's \"active\"")?;
+    let entry = file
+        .providers
+        .get(&name)
+        .with_context(|| format!("provider \"{name}\" not found in providers config"))?;
+    let shape = match entry.shape.as_str() {
+        "anthropic" => ProviderShape::Anthropic,
+        "openai" | "openai-compatible" => ProviderShape::OpenAiCompatible,
+        other => anyhow::bail!(
+            "unknown provider shape \"{other}\" for \"{name}\" (expected \"anthropic\" or \"openai\")"
+        ),
+    };
+    let api_key = env_lookup(&entry.api_key_env)
+        .filter(|k| !k.trim().is_empty())
+        .with_context(|| {
+            format!(
+                "{} is not set — required for provider \"{name}\"",
+                entry.api_key_env
+            )
+        })?;
+    Ok(ProviderConfig {
+        shape,
+        base_url: entry.base_url.clone(),
+        model: entry.model.clone(),
         api_key,
     })
 }
@@ -491,6 +573,66 @@ mod tests {
         .unwrap();
         assert_eq!(blank.model, "claude-opus-5");
         assert_eq!(blank.base_url, "https://api.anthropic.com");
+    }
+
+    const PROVIDERS_JSON: &str = r#"{
+        "active": "claude",
+        "providers": {
+            "claude": { "shape": "anthropic", "base_url": "https://api.anthropic.com", "model": "claude-opus-5", "api_key_env": "ANTHROPIC_API_KEY" },
+            "animus": { "shape": "openai", "base_url": "http://127.0.0.1:8080", "model": "local-gguf", "api_key_env": "ANIMUS_API_KEY" }
+        }
+    }"#;
+
+    #[test]
+    fn test_resolve_provider_select() {
+        let env = |k: &str| match k {
+            "ANTHROPIC_API_KEY" => Some("sk-anthropic".to_string()),
+            "ANIMUS_API_KEY" => Some("sk-animus".to_string()),
+            _ => None,
+        };
+        // Active provider from the file.
+        let c = resolve_provider(Some(PROVIDERS_JSON), None, env).unwrap();
+        assert_eq!(c.shape, ProviderShape::Anthropic);
+        assert_eq!(c.base_url, "https://api.anthropic.com");
+        assert_eq!(c.model, "claude-opus-5");
+        // DIVER_PROVIDER-style override → the openai (Animus_Ferric) provider.
+        let c = resolve_provider(Some(PROVIDERS_JSON), Some("animus"), env).unwrap();
+        assert_eq!(c.shape, ProviderShape::OpenAiCompatible);
+        assert_eq!(c.base_url, "http://127.0.0.1:8080");
+        assert_eq!(c.model, "local-gguf");
+    }
+
+    #[test]
+    fn test_resolve_provider_key_env() {
+        // The api_key is read from the entry's named api_key_env, not the file.
+        let env = |k: &str| (k == "ANIMUS_API_KEY").then(|| "sk-animus".to_string());
+        let c = resolve_provider(Some(PROVIDERS_JSON), Some("animus"), env).unwrap();
+        assert_eq!(c.api_key, "sk-animus");
+    }
+
+    #[test]
+    fn test_resolve_provider_no_file_fallback() {
+        // No providers file → the Anthropic env fallback.
+        let env = |k: &str| match k {
+            "ANTHROPIC_API_KEY" => Some("sk-anthropic".to_string()),
+            "DIVER_MODEL" => Some("claude-haiku-4-5".to_string()),
+            _ => None,
+        };
+        let c = resolve_provider(None, None, env).unwrap();
+        assert_eq!(c.shape, ProviderShape::Anthropic);
+        assert_eq!(c.model, "claude-haiku-4-5");
+        assert_eq!(c.api_key, "sk-anthropic");
+        // Missing key in the fallback still errors.
+        assert!(resolve_provider(None, None, |_| None).is_err());
+    }
+
+    #[test]
+    fn test_resolve_provider_missing_key_errors() {
+        // A selected provider whose api_key_env yields nothing errors, naming the var.
+        let err = resolve_provider(Some(PROVIDERS_JSON), Some("animus"), |_| None)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("ANIMUS_API_KEY"), "names the env var: {err}");
     }
 
     fn config(shape: ProviderShape, base_url: String) -> ProviderConfig {
