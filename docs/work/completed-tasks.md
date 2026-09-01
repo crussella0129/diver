@@ -281,3 +281,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/store.rs
 - **Commit:** `2150a8febea8a47ac2b60a462ab8dd6ed1558166`
+
+## T-1203 — (sprint 12)
+- **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/coassertion.rs
+- **Commit:** PENDING

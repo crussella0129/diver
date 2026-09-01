@@ -19,8 +19,11 @@ Find knowledge, not just papers, on ArXiv
 
 `diver dive <concept>` traverses the **extracted knowledge graph**: it finds the
 papers whose stored assertions mention the concept, shows the matching claims, and
-lists the papers each is related to via deterministic edges (a shared arXiv
-category or a shared author).
+lists the papers each is related to via deterministic edges:
+
+- **shared category** or **shared author** (structural), and
+- **co-assertion** — the papers' stored claims share a significant term, so `dive`
+  links papers by *what they assert*, not only their metadata.
 
 Because `dive` reads the persisted assertions, run `diver extract` on the papers
 you care about first — a paper with no extracted assertions won't appear as a
