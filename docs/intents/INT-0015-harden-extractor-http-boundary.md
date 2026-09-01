@@ -2,9 +2,9 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0015
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 14 build plan](../sprints/s14/sprint-plans/build-plan.md) (T-1401, T-1402, T-1403)
-- **Completion evidence:** (pending)
+- **Completion evidence:** [T-1401/T-1402/T-1403 completion](../work/completed-tasks.md#t-1401--sprint-14)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs), [diver-core/Cargo.toml](../../diver-core/Cargo.toml)
 - **Test evidence:** [Sprint 14 test report](../sprints/s14/sprint-tests/test-report.md)
 - **Documentation evidence:** [README.md](../../README.md) (`ANTHROPIC_BASE_URL`)
@@ -95,3 +95,9 @@ and is the prerequisite for any future structured-output migration.
   injectable base URL, T-1402 wiremock transport tests + dev-deps, T-1403 docs +
   amend INT-0009). Scope: transport harness only; tool-use/structured outputs deferred.
 - 2026-09-01: `planned` → `active` (Sprint 14 build started; T-1401 first).
+- 2026-09-01: `active` → `realized` (Sprint 14: injectable `base_url` +
+  `ANTHROPIC_BASE_URL`; `extract` posts to `{base_url}/v1/messages`; two `wiremock`
+  transport tests cover the 2xx happy path + request shape and the non-2xx error path;
+  `wiremock`/`tokio` added as dev-deps only. 126 tests pass, clippy 0. INT-0009's
+  manual-only Consequences note amended. `from_env` env-read and a 200-garbage transport
+  test deferred — see test critique C-001/C-002; tool-use/structured outputs remain future).
