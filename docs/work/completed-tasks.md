@@ -245,3 +245,9 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/persist_pipeline.rs
 - **Commit:** `75eb8b0284b83cae4d8617298ac8cfb25113c476`
+
+## T-1001 — (sprint 10)
+- **Intent:** [INT-0011](../intents/INT-0011-clippy-hygiene.md)
+- **Completed:** 2026-08-31
+- **Touched:** diver-core/src/store.rs, diver-core/src/display.rs
+- **Commit:** `d186c0f4c6aeb02943cd2680e05ee8596b0a9444`

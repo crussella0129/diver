@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_display_showing_count() {
-        let papers = vec![
+        let papers = [
             make_paper("short"),
             make_paper("short"),
             make_paper("short"),
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn test_display_fact_version_marker() {
         let fact = make_fact("2301.00001", "Test");
-        let versions = vec!["v1".to_string(), "v2".to_string()];
+        let versions = ["v1".to_string(), "v2".to_string()];
         // The current version in fact is "v1"; verify version marker logic
         let current = &fact.arxiv_version;
         let marked: Vec<String> = versions
@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_display_fact_list() {
-        let facts = vec![
+        let facts = [
             make_fact("2301.00001", "First Paper"),
             make_fact("2302.00002", "Second Paper"),
         ];
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_display_dive_results() {
-        let results = vec![
+        let results = [
             make_search_result("2301.00001", "First Result Paper"),
             make_search_result("2302.00002", "Second Result Paper"),
         ];
@@ -431,12 +431,7 @@ mod tests {
         let mut buf = Vec::new();
         use std::io::Write;
         let label = "Ingested";
-        writeln!(
-            buf,
-            "  {}: {} \u{2014} {}",
-            label, "2301.00001", "Test Paper"
-        )
-        .unwrap();
+        writeln!(buf, "  {label}: 2301.00001 \u{2014} Test Paper").unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Ingested:"));
         assert!(output.contains("2301.00001"));
@@ -448,12 +443,7 @@ mod tests {
         let mut buf = Vec::new();
         use std::io::Write;
         let label = "Updated";
-        writeln!(
-            buf,
-            "  {}: {} \u{2014} {}",
-            label, "2301.00001", "Test Paper"
-        )
-        .unwrap();
+        writeln!(buf, "  {label}: 2301.00001 \u{2014} Test Paper").unwrap();
         let output = String::from_utf8(buf).unwrap();
         assert!(output.contains("Updated:"));
         assert!(output.contains("2301.00001"));
