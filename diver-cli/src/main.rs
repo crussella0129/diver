@@ -6,6 +6,7 @@ use diver_core::client::ArxivClient;
 use diver_core::display;
 use diver_core::extract::LlmExtractor;
 use diver_core::fact::SourceFact;
+use diver_core::graph::{build_dive, compute_relations};
 use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
 use diver_core::store::Store;
@@ -59,6 +60,12 @@ enum Commands {
     Assertions {
         /// ArXiv paper ID (e.g., 2301.00001)
         arxiv_id: String,
+    },
+
+    /// Explore a concept: papers that assert about it and how they connect
+    Dive {
+        /// Concept to explore (matched against stored assertion claims)
+        concept: String,
     },
 
     /// List all ingested papers
@@ -183,6 +190,19 @@ async fn main() -> Result<()> {
             let store = Store::open()?;
             let stored = store.get_assertions(&arxiv_id)?;
             display::display_stored_assertions(&arxiv_id, &stored);
+        }
+
+        Commands::Dive { concept } => {
+            let store = Store::open()?;
+            let asserting = store.papers_asserting(&concept)?;
+            if asserting.is_empty() {
+                display::display_dive(&concept, &[]);
+            } else {
+                let facts = store.list()?;
+                let relations = compute_relations(&facts);
+                let nodes = build_dive(&facts, &asserting, &relations);
+                display::display_dive(&concept, &nodes);
+            }
         }
 
         Commands::List => {

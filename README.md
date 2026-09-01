@@ -12,9 +12,24 @@ Find knowledge, not just papers, on ArXiv
 | `diver inspect <arxiv-id>` | Show full metadata, taxonomy-resolved categories, and version history |
 | `diver extract <arxiv-id>` | Extract grounded, supported claims from a stored paper's abstract (uses the Claude API) and persist them |
 | `diver assertions <arxiv-id>` | Show the assertions previously extracted and stored for a paper |
+| `diver dive <concept>` | Explore a concept: papers that assert about it and how they connect |
 | `diver list` | List all ingested papers |
 
-> **Note:** `diver dive` is reserved for a future sprint — graph traversal is not yet implemented.
+## Concept exploration (`diver dive`)
+
+`diver dive <concept>` traverses the **extracted knowledge graph**: it finds the
+papers whose stored assertions mention the concept, shows the matching claims, and
+lists the papers each is related to via deterministic edges (a shared arXiv
+category or a shared author).
+
+Because `dive` reads the persisted assertions, run `diver extract` on the papers
+you care about first — a paper with no extracted assertions won't appear as a
+`dive` seed. (For plain abstract search, use `diver find`.)
+
+```sh
+diver extract 2301.00001        # persist this paper's assertions
+diver dive attention            # explore papers asserting about "attention"
+```
 
 ## Claim extraction (`diver extract`)
 

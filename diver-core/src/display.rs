@@ -2,6 +2,7 @@ use owo_colors::OwoColorize;
 
 use crate::assertion::{Assertion, Supported};
 use crate::fact::SourceFact;
+use crate::graph::{DiveNode, RelationKind};
 use crate::id::ArxivCategory;
 use crate::model::Paper;
 use crate::store::{SearchResult, StoredAssertion};
@@ -125,6 +126,54 @@ pub fn display_stored_assertions(arxiv_id: &str, assertions: &[StoredAssertion])
         println!("    {}", format!("({})", assertion.version).dimmed());
         for quote in &assertion.support {
             println!("    {}", format!("\u{2014} \"{quote}\"").dimmed());
+        }
+        println!();
+    }
+}
+
+/// How many related papers to list per dive node before summarizing the rest.
+const DIVE_RELATED_CAP: usize = 10;
+
+fn relation_reason(kind: &RelationKind) -> String {
+    match kind {
+        RelationKind::SharedCategory(code) => format!("shared category {code}"),
+        RelationKind::SharedAuthor(name) => format!("shared author {name}"),
+    }
+}
+
+/// Display a `diver dive` neighborhood: each asserting paper, its matching
+/// claims, and its related papers (bounded per node).
+pub fn display_dive(concept: &str, nodes: &[DiveNode]) {
+    println!("{}", format!("Dive: {concept}").bold());
+    println!();
+
+    if nodes.is_empty() {
+        println!(
+            "  {}",
+            format!("No papers assert about '{concept}'. Run `diver extract <id>` first.").dimmed()
+        );
+        return;
+    }
+
+    for node in nodes {
+        println!("{}  {}", node.arxiv_id.bold(), node.title);
+        for claim in &node.claims {
+            println!("  \u{2022} {claim}");
+        }
+        if node.related.is_empty() {
+            println!("    {}", "(no related papers)".dimmed());
+        } else {
+            println!("    {}", "Related:".dimmed());
+            for (other, kind) in node.related.iter().take(DIVE_RELATED_CAP) {
+                println!(
+                    "      {}",
+                    format!("{other} \u{2014} {}", relation_reason(kind)).dimmed()
+                );
+            }
+            if node.related.len() > DIVE_RELATED_CAP {
+                let more = node.related.len() - DIVE_RELATED_CAP;
+                println!("      {}", format!("(+{more} more)").dimmed());
+            }
         }
         println!();
     }

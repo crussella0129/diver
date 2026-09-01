@@ -263,3 +263,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/store.rs
 - **Commit:** `c0642193b87c7b0c6171eb1fe23363ea657447b6`
+
+## T-1103 — (sprint 11)
+- **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/dive_graph.rs
+- **Commit:** PENDING
