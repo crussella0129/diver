@@ -104,6 +104,14 @@ layer valuable and what the future graph and synthesis layers will consume.
     transport tests against a mock server via an injectable `base_url`
     (`ANTHROPIC_BASE_URL`). Only real-endpoint reachability/credentials remain a
     manual check. See [[harden-extractor-http-boundary]].
+  - **Update (INT-0016, Sprint 15):** the extractor is now **agent-agnostic**. The
+    Anthropic-only, fence-tolerant text parser is replaced by a provider substrate with
+    two compiled shapes — `anthropic` (Messages API tool-use) and `openai` (Chat
+    Completions `response_format` json_schema, covering OpenAI, Grok, and
+    Animus_Ferric's local server) — selected by hot-loadable `providers.json` config.
+    The `parse_claim_array`/`strip_fences` heuristics are deleted; grounding and the
+    `validate` gate are unchanged; `ANTHROPIC_API_KEY`/`DIVER_MODEL` remain the no-config
+    fallback. See [[structured-claim-extraction]].
 
 ## Transition history
 - 2026-08-31: created as `proposed`.

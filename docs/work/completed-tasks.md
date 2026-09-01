@@ -335,3 +335,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/extract.rs
 - **Commit:** `2a9d56a159d7be7405d8021ee25108a08ab53950`
+
+## T-1503 — (sprint 15)
+- **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
+- **Completed:** 2026-09-01
+- **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md (module doc already updated in T-1501)
+- **Commit:** PENDING

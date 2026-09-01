@@ -53,24 +53,49 @@ diver dive attention --temperature 1.0   # every shared term links
 
 ## Claim extraction (`diver extract`)
 
-`diver extract <arxiv-id>` asks Claude to read the stored paper's abstract and
-extract the factual claims it makes, each with a supporting quote. A claim is
-only kept if its quote is **grounded** in the abstract (hallucinated claims are
-dropped), and every claim passes the typestate validation gate before it is
-shown.
+`diver extract <arxiv-id>` asks a model to read the stored paper's abstract and
+extract the factual claims it makes, each with a supporting quote, as **structured
+output**. A claim is only kept if its quote is **grounded** in the abstract
+(hallucinated claims are dropped), and every claim passes the typestate validation
+gate before it is shown.
 
-- Requires **`ANTHROPIC_API_KEY`** in the environment.
-- The model defaults to `claude-opus-5`; override it with **`DIVER_MODEL`**
-  (e.g. `DIVER_MODEL=claude-haiku-4-5` for a cheaper run).
-- The API root defaults to `https://api.anthropic.com`; override it with
-  **`ANTHROPIC_BASE_URL`** to point at a proxy or a mock server (the request goes
-  to `{base}/v1/messages`).
-- Pass **`--deterministic`** to use the offline sentence-splitter instead of the
-  API (no key, no network, no cost).
+The extractor is **agent-agnostic**: it speaks two compiled provider *shapes* and
+selects one from hot-loadable config, so the same grounded, gated pipeline runs on
+Claude, OpenAI/Codex, Grok, or a local model:
+
+- **`anthropic`** — Anthropic Messages API, a forced `record_claims` tool.
+- **`openai`** — OpenAI-compatible Chat Completions with a `json_schema`
+  `response_format`. Covers OpenAI, Grok, and local llama.cpp/Ollama/vLLM servers —
+  including **[Animus_Ferric](https://github.com/crussella0129/Animus_Ferric)** via
+  `ferric server up` (an OpenAI-compatible server on `127.0.0.1:8080`).
+
+### Providers config
+
+Providers are defined in `providers.json` (at your platform config dir under
+`diver/`, or point `DIVER_PROVIDERS_CONFIG` at any path). API keys are **never**
+stored in the file — each provider names an `api_key_env`. The active provider is
+the file's `"active"`, overridable with `DIVER_PROVIDER`. Edits take effect on the
+next run (hot-loadable); a front-end embedding `diver-core` can also build an
+extractor directly from a `ProviderConfig`.
+
+```json
+{ "active": "claude",
+  "providers": {
+    "claude": { "shape": "anthropic", "base_url": "https://api.anthropic.com", "model": "claude-opus-5", "api_key_env": "ANTHROPIC_API_KEY" },
+    "openai": { "shape": "openai",    "base_url": "https://api.openai.com",     "model": "gpt-4o",       "api_key_env": "OPENAI_API_KEY" },
+    "grok":   { "shape": "openai",    "base_url": "https://api.x.ai",           "model": "grok-2",       "api_key_env": "XAI_API_KEY" },
+    "animus": { "shape": "openai",    "base_url": "http://127.0.0.1:8080",       "model": "your-model.gguf", "api_key_env": "ANIMUS_API_KEY" } } }
+```
+
+With **no** `providers.json`, extraction falls back to today's behavior: the
+`anthropic` shape from `ANTHROPIC_API_KEY` / `DIVER_MODEL` / `ANTHROPIC_BASE_URL`.
+Pass **`--deterministic`** to use the offline sentence-splitter instead of any API
+(no key, no network, no cost).
 
 ```sh
 export ANTHROPIC_API_KEY=sk-ant-...
-diver extract 2301.00001                 # LLM extraction (default), persists results
+diver extract 2301.00001                 # active provider (default: anthropic env)
+DIVER_PROVIDER=animus diver extract 2301.00001   # local Animus_Ferric model
 diver extract 2301.00001 --deterministic # offline, no API call
 diver assertions 2301.00001              # show the stored assertions
 ```
