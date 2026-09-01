@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0012
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 11 build plan](../sprints/s11/sprint-plans/build-plan.md) (T-1101, T-1102, T-1103)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-1101/T-1102/T-1103 completion](../work/completed-tasks.md#t-1101--sprint-11)
+- **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 11 test report](../sprints/s11/sprint-tests/test-report.md)
-- **Documentation evidence:** none
+- **Documentation evidence:** [README.md](../../README.md) (`diver dive`)
 
 ## Intent
 
@@ -89,3 +89,8 @@ reproducible; richer semantic edges are a later sprint that plug into the same
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 11 build plan (T-1101
   graph core, T-1102 `papers_asserting`, T-1103 `diver dive`).
 - 2026-09-01: `planned` → `active` (Sprint 11 build started; T-1101 first).
+- 2026-09-01: `active` → `realized` (Sprint 11: `graph` module —
+  `ComputedRelation`/`RelationKind`, `compute_relations`, `build_dive` —
+  `Store::papers_asserting`, and `diver dive <concept>` over the persisted
+  assertions; 103 tests pass, clippy 0. Semantic edges / binary populated E2E
+  deferred — see critique).

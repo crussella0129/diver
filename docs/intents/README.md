@@ -17,4 +17,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0009](INT-0009-llm-claim-extractor.md) | LLM-backed claim extractor | realized |
 | [INT-0010](INT-0010-persist-epistemic-layer.md) | Persist the epistemic layer | realized |
 | [INT-0011](INT-0011-clippy-hygiene.md) | Resolve pre-existing clippy warnings (maintenance) | realized |
-| [INT-0012](INT-0012-graph-dive.md) | Graph layer: ComputedRelation + `diver dive` | planned |
+| [INT-0012](INT-0012-graph-dive.md) | Graph layer: ComputedRelation + `diver dive` | realized |
