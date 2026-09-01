@@ -328,4 +328,4 @@
 - **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/extract.rs, diver-core/tests/llm_extract_pipeline.rs, diver-core/tests/persist_pipeline.rs (compile-forced envelope migration), docs/intents/INT-0016-structured-claim-extraction.md, docs/intents/README.md
-- **Commit:** PENDING
+- **Commit:** `685c29ba6922fdd714d75b0f66c4ff2457219668`
