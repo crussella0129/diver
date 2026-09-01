@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0015
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 14 build plan](../sprints/s14/sprint-plans/build-plan.md) (T-1401, T-1402, T-1403)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs), [diver-core/Cargo.toml](../../diver-core/Cargo.toml)
@@ -94,3 +94,4 @@ and is the prerequisite for any future structured-output migration.
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 14 build plan (T-1401
   injectable base URL, T-1402 wiremock transport tests + dev-deps, T-1403 docs +
   amend INT-0009). Scope: transport harness only; tool-use/structured outputs deferred.
+- 2026-09-01: `planned` → `active` (Sprint 14 build started; T-1401 first).

@@ -21,8 +21,10 @@ use crate::observation::Observation;
 /// the most capable model; the user downgrades via `DIVER_MODEL` for cost.
 const DEFAULT_MODEL: &str = "claude-opus-5";
 
-/// Anthropic Messages API endpoint.
-const MESSAGES_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+/// Default Anthropic API root. `extract` posts to `{base_url}/v1/messages`. The
+/// root is injectable (via [`LlmExtractor::build`] / `ANTHROPIC_BASE_URL`) so tests
+/// can point the client at a local mock server.
+const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 
 /// Instruction to Claude: extract grounded claims as a JSON array.
 const SYSTEM_PROMPT: &str = "You extract the discrete factual claims a research \
@@ -40,6 +42,7 @@ pub struct LlmExtractor {
     http: reqwest::Client,
     model: String,
     api_key: String,
+    base_url: String,
 }
 
 // Manual Debug that redacts the API key — never print the secret.
@@ -59,13 +62,18 @@ impl LlmExtractor {
         Self::build(
             std::env::var("ANTHROPIC_API_KEY").ok(),
             std::env::var("DIVER_MODEL").ok(),
+            std::env::var("ANTHROPIC_BASE_URL").ok(),
         )
     }
 
     /// Pure construction logic (env-reading split out for testability). A missing
     /// or blank key is an actionable error; a missing/blank model falls back to
-    /// [`DEFAULT_MODEL`].
-    fn build(api_key: Option<String>, model: Option<String>) -> Result<Self> {
+    /// [`DEFAULT_MODEL`] and a missing/blank base URL to [`DEFAULT_BASE_URL`].
+    fn build(
+        api_key: Option<String>,
+        model: Option<String>,
+        base_url: Option<String>,
+    ) -> Result<Self> {
         let api_key = api_key.filter(|k| !k.trim().is_empty()).context(
             "ANTHROPIC_API_KEY is not set — set it to use LLM extraction, or run \
              `diver extract <id> --deterministic` for the offline extractor",
@@ -73,6 +81,9 @@ impl LlmExtractor {
         let model = model
             .filter(|m| !m.trim().is_empty())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        let base_url = base_url
+            .filter(|u| !u.trim().is_empty())
+            .unwrap_or_else(|| DEFAULT_BASE_URL.to_string());
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()
@@ -81,6 +92,7 @@ impl LlmExtractor {
             http,
             model,
             api_key,
+            base_url,
         })
     }
 
@@ -97,7 +109,7 @@ impl LlmExtractor {
 
         let response = self
             .http
-            .post(MESSAGES_ENDPOINT)
+            .post(format!("{}/v1/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -346,10 +358,12 @@ mod tests {
 
     #[test]
     fn test_build_missing_key_errors() {
-        let err = LlmExtractor::build(None, None).unwrap_err().to_string();
+        let err = LlmExtractor::build(None, None, None)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("ANTHROPIC_API_KEY"), "got: {err}");
         // A blank/whitespace key is treated as absent.
-        let err_blank = LlmExtractor::build(Some("   ".to_string()), None)
+        let err_blank = LlmExtractor::build(Some("   ".to_string()), None, None)
             .unwrap_err()
             .to_string();
         assert!(err_blank.contains("ANTHROPIC_API_KEY"), "got: {err_blank}");
@@ -357,19 +371,39 @@ mod tests {
 
     #[test]
     fn test_build_model_default_and_override() {
-        let default = LlmExtractor::build(Some("sk-test".to_string()), None).unwrap();
+        let default = LlmExtractor::build(Some("sk-test".to_string()), None, None).unwrap();
         assert_eq!(default.model, "claude-opus-5");
 
         let overridden = LlmExtractor::build(
             Some("sk-test".to_string()),
             Some("claude-haiku-4-5".to_string()),
+            None,
         )
         .unwrap();
         assert_eq!(overridden.model, "claude-haiku-4-5");
 
         // A blank model falls back to the default.
         let blank =
-            LlmExtractor::build(Some("sk-test".to_string()), Some("  ".to_string())).unwrap();
+            LlmExtractor::build(Some("sk-test".to_string()), Some("  ".to_string()), None).unwrap();
         assert_eq!(blank.model, "claude-opus-5");
+    }
+
+    #[test]
+    fn test_build_base_url_default_and_override() {
+        // Unset/blank base URL falls back to the default endpoint root.
+        let default = LlmExtractor::build(Some("sk-test".to_string()), None, None).unwrap();
+        assert_eq!(default.base_url, "https://api.anthropic.com");
+        let blank = LlmExtractor::build(Some("sk-test".to_string()), None, Some("   ".to_string()))
+            .unwrap();
+        assert_eq!(blank.base_url, "https://api.anthropic.com");
+
+        // An explicit base URL (e.g. a mock server) is used verbatim.
+        let overridden = LlmExtractor::build(
+            Some("sk-test".to_string()),
+            None,
+            Some("http://127.0.0.1:9".to_string()),
+        )
+        .unwrap();
+        assert_eq!(overridden.base_url, "http://127.0.0.1:9");
     }
 }

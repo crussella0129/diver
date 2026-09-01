@@ -305,3 +305,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, diver-core/tests/coassertion.rs
 - **Commit:** `ace527ad2b255056a321b980e2e6a5e2f0094b68`
+
+## T-1401 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/extract.rs, docs/intents/INT-0015-harden-extractor-http-boundary.md, docs/intents/README.md
+- **Commit:** PENDING
