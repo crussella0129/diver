@@ -194,14 +194,24 @@ fn significant_terms(claim: &str) -> Vec<String> {
 ///
 /// When `N <= 2` there is no discriminating power (and `ln(N/2)` would be `0`), so
 /// every shared term is kept with `weight = 1.0`, at any temperature. `temperature`
-/// is clamped to `[0.0, 1.0]`. One edge per shared term per unordered pair of
+/// is clamped to `[0.0, 1.0]`; a non-finite value (NaN/inf) is treated as `1.0`
+/// (fully permissive). One edge per shared term per unordered pair of
 /// distinct papers; shared terms are emitted in sorted order for stable,
 /// deterministic output. No self-edges.
 pub fn compute_coassertion_relations(
     claims: &[(String, String)],
     temperature: f64,
 ) -> Vec<ComputedRelation> {
-    let threshold = 1.0 - temperature.clamp(0.0, 1.0);
+    // A non-finite temperature (NaN/inf) has no meaningful clamp: `f64::clamp`
+    // passes NaN straight through, which would make `threshold` NaN and silently
+    // drop every edge (`w >= NaN` is always false). Treat any non-finite value as
+    // the fully-permissive 1.0 rather than erasing the graph.
+    let t = if temperature.is_finite() {
+        temperature.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let threshold = 1.0 - t;
 
     // Group each paper's significant terms (deduplicated, order-preserving),
     // keeping papers in first-seen order.
@@ -642,5 +652,34 @@ mod tests {
             }
             other => panic!("expected CoAssertion, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_coassertion_temperature_sanitized() {
+        let corpus = tfidf_corpus();
+        let permissive = coassertion_terms(&compute_coassertion_relations(&corpus, 1.0));
+        let selective = coassertion_terms(&compute_coassertion_relations(&corpus, 0.0));
+
+        // A non-finite temperature must NOT silently drop every edge (the NaN would
+        // otherwise poison the threshold); it is treated as the permissive 1.0.
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                coassertion_terms(&compute_coassertion_relations(&corpus, bad)),
+                permissive,
+                "non-finite temperature {bad} should behave like t=1.0, not empty"
+            );
+        }
+
+        // Out-of-range finite values clamp into [0.0, 1.0].
+        assert_eq!(
+            coassertion_terms(&compute_coassertion_relations(&corpus, 5.0)),
+            permissive,
+            "t > 1 clamps to 1.0"
+        );
+        assert_eq!(
+            coassertion_terms(&compute_coassertion_relations(&corpus, -5.0)),
+            selective,
+            "t < 0 clamps to 0.0"
+        );
     }
 }
