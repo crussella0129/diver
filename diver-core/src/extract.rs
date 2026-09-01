@@ -243,6 +243,8 @@ fn normalize(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::id::ArxivCategory;
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn fact_with_summary(summary: &str) -> SourceFact {
         let primary = ArxivCategory::parse("cs.CL").unwrap();
@@ -405,5 +407,71 @@ mod tests {
         )
         .unwrap();
         assert_eq!(overridden.base_url, "http://127.0.0.1:9");
+    }
+
+    /// The real `reqwest` round-trip against a mock: a 2xx Messages envelope yields
+    /// the grounded candidate, and the request carried the right headers and body.
+    #[tokio::test]
+    async fn test_extract_http_happy_path() {
+        let server = MockServer::start().await;
+        // Model output: one grounded claim + one hallucinated claim.
+        let response_body = envelope(
+            r#"[{"claim": "Attention improves accuracy.", "quote": "attention improves accuracy"}, {"claim": "It teleports data.", "quote": "teleports data across the globe"}]"#,
+        );
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(header("x-api-key", "sk-test"))
+            .and(header("anthropic-version", "2023-06-01"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response_body))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let fact = fact_with_summary("In this work, attention improves accuracy on the benchmark.");
+        let extractor = LlmExtractor::build(
+            Some("sk-test".to_string()),
+            Some("claude-sonnet-test".to_string()),
+            Some(server.uri()),
+        )
+        .unwrap();
+
+        let candidates = extractor.extract(&fact).await.unwrap();
+        // Grounding still applies over the real round-trip: only the grounded claim survives.
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].claim(), "Attention improves accuracy.");
+
+        // The request the mock received carried the configured model, the system
+        // prompt, and the abstract in its body.
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let sent = String::from_utf8_lossy(&requests[0].body);
+        assert!(sent.contains("claude-sonnet-test"), "model in body: {sent}");
+        assert!(
+            sent.contains("discrete factual claims"),
+            "system prompt in body: {sent}"
+        );
+        assert!(
+            sent.contains("attention improves accuracy on the benchmark"),
+            "abstract in body: {sent}"
+        );
+    }
+
+    /// A non-2xx response surfaces as an error carrying the status and the body.
+    #[tokio::test]
+    async fn test_extract_http_error_status() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("upstream boom"))
+            .mount(&server)
+            .await;
+
+        let fact = fact_with_summary("Anything at all.");
+        let extractor =
+            LlmExtractor::build(Some("sk-test".to_string()), None, Some(server.uri())).unwrap();
+
+        let err = extractor.extract(&fact).await.unwrap_err().to_string();
+        assert!(err.contains("500"), "status in error: {err}");
+        assert!(err.contains("upstream boom"), "body in error: {err}");
     }
 }

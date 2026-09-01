@@ -311,3 +311,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/extract.rs, docs/intents/INT-0015-harden-extractor-http-boundary.md, docs/intents/README.md
 - **Commit:** `0f140ee9931864fd3b2035af1018cc454afe0e03`
+
+## T-1402 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/Cargo.toml, Cargo.lock, diver-core/src/extract.rs
+- **Commit:** PENDING
