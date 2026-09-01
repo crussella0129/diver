@@ -251,3 +251,9 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-core/src/store.rs, diver-core/src/display.rs
 - **Commit:** `d186c0f4c6aeb02943cd2680e05ee8596b0a9444`
+
+## T-1101 — (sprint 11)
+- **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/graph.rs, diver-core/src/lib.rs
+- **Commit:** PENDING

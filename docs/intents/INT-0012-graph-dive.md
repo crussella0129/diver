@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0012
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 11 build plan](../sprints/s11/sprint-plans/build-plan.md) (T-1101, T-1102, T-1103)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -88,3 +88,4 @@ reproducible; richer semantic edges are a later sprint that plug into the same
 - 2026-09-01: created as `proposed`.
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 11 build plan (T-1101
   graph core, T-1102 `papers_asserting`, T-1103 `diver dive`).
+- 2026-09-01: `planned` → `active` (Sprint 11 build started; T-1101 first).
