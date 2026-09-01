@@ -144,7 +144,7 @@ fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
         RelationKind::SharedAuthor(name) => format!("shared author {name}"),
-        RelationKind::CoAssertion(term) => format!("co-asserts {term}"),
+        RelationKind::CoAssertion { term, weight } => format!("co-asserts {term} (w={weight:.2})"),
     }
 }
 
@@ -289,10 +289,14 @@ mod tests {
     }
 
     #[test]
-    fn test_relation_reason_coassertion() {
-        let s = relation_reason(&RelationKind::CoAssertion("attention".to_string()));
+    fn test_relation_reason_coassertion_weight() {
+        let s = relation_reason(&RelationKind::CoAssertion {
+            term: "attention".to_string(),
+            weight: 0.82,
+        });
         assert!(s.contains("co-asserts"), "got: {s}");
         assert!(s.contains("attention"), "got: {s}");
+        assert!(s.contains("w=0.82"), "weight shown to 2dp; got: {s}");
     }
 
     fn make_paper(summary: &str) -> Paper {

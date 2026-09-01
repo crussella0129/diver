@@ -58,12 +58,16 @@ fn test_coassertion_pipeline() {
         )
         .unwrap();
 
-    // The only shared significant term is "attention".
-    let relations = compute_coassertion_relations(&store.all_claims().unwrap());
+    // The only shared significant term is "attention". N == 2 → small-corpus
+    // guard → weight 1.0 regardless of temperature.
+    let relations = compute_coassertion_relations(&store.all_claims().unwrap(), 1.0);
     assert_eq!(relations.len(), 1);
     assert_eq!(
         relations[0].kind,
-        RelationKind::CoAssertion("attention".to_string())
+        RelationKind::CoAssertion {
+            term: "attention".to_string(),
+            weight: 1.0,
+        }
     );
 
     // In a dive for "attention", Paper A's neighborhood lists Paper B via the edge.
@@ -72,6 +76,11 @@ fn test_coassertion_pipeline() {
     let nodes = build_dive(&facts, &asserting, &relations);
     let node_a = nodes.iter().find(|n| n.arxiv_id == "2301.00001").unwrap();
     assert!(node_a.related.iter().any(|(id, kind)| {
-        id == "2302.00002" && *kind == RelationKind::CoAssertion("attention".to_string())
+        id == "2302.00002"
+            && *kind
+                == RelationKind::CoAssertion {
+                    term: "attention".to_string(),
+                    weight: 1.0,
+                }
     }));
 }

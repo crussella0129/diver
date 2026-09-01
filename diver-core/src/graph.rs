@@ -6,23 +6,25 @@
 //! turns a concept's seed papers (those whose persisted assertions mention it) plus
 //! those edges into a concept-centered neighborhood of [`DiveNode`]s for display.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::fact::SourceFact;
 
 /// Why two papers are related.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RelationKind {
     /// The papers share this arXiv category code.
     SharedCategory(String),
     /// The papers share this author.
     SharedAuthor(String),
-    /// The papers' stored claims share this significant term.
-    CoAssertion(String),
+    /// The papers' stored claims share this significant `term`, whose normalized
+    /// IDF `weight` (in `[0.0, 1.0]`; higher = rarer/more distinctive across the
+    /// corpus) cleared the `dive` temperature threshold.
+    CoAssertion { term: String, weight: f64 },
 }
 
 /// A deterministic edge between two stored papers, by `arxiv_id`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComputedRelation {
     pub from: String,
     pub to: String,
@@ -31,7 +33,7 @@ pub struct ComputedRelation {
 
 /// One node of a `diver dive` neighborhood: a paper that asserts about the
 /// concept, its matching claims, and the papers it is related to.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiveNode {
     pub arxiv_id: String,
     pub title: String,
@@ -177,11 +179,30 @@ fn significant_terms(claim: &str) -> Vec<String> {
 }
 
 /// Compute co-assertion edges: papers whose persisted claims share a significant
-/// term. `claims` is `(arxiv_id, claim)` for every persisted assertion. One
-/// [`RelationKind::CoAssertion`] edge is emitted per shared term for each unordered
-/// pair of distinct papers; shared terms are emitted in sorted order for stable,
+/// term, weighted by inverse document frequency and gated by `temperature`.
+///
+/// `claims` is `(arxiv_id, claim)` for every persisted assertion. Each paper is a
+/// document; a term's document frequency `df` is the number of papers whose
+/// (deduplicated) significant terms contain it. A *shared* term has `df >= 2`, so
+/// its normalized weight `w = ln(N/df) / ln(N/2)` lies in `[0.0, 1.0]` — `1.0` when
+/// shared by exactly two papers (rarest, most distinctive), `0.0` when shared by
+/// all `N` (ubiquitous). An edge is emitted for a shared term iff
+/// `w >= 1.0 - temperature`:
+/// - `temperature == 1.0` keeps every shared term (threshold `0.0`);
+/// - `temperature == 0.0` keeps only `df == 2` terms (threshold `1.0`);
+/// - the kept set is monotonic non-decreasing in `temperature`.
+///
+/// When `N <= 2` there is no discriminating power (and `ln(N/2)` would be `0`), so
+/// every shared term is kept with `weight = 1.0`, at any temperature. `temperature`
+/// is clamped to `[0.0, 1.0]`. One edge per shared term per unordered pair of
+/// distinct papers; shared terms are emitted in sorted order for stable,
 /// deterministic output. No self-edges.
-pub fn compute_coassertion_relations(claims: &[(String, String)]) -> Vec<ComputedRelation> {
+pub fn compute_coassertion_relations(
+    claims: &[(String, String)],
+    temperature: f64,
+) -> Vec<ComputedRelation> {
+    let threshold = 1.0 - temperature.clamp(0.0, 1.0);
+
     // Group each paper's significant terms (deduplicated, order-preserving),
     // keeping papers in first-seen order.
     let mut papers: Vec<String> = Vec::new();
@@ -204,6 +225,27 @@ pub fn compute_coassertion_relations(claims: &[(String, String)]) -> Vec<Compute
             .collect();
     }
 
+    // Document frequency: how many papers' deduped terms contain each term.
+    let n = papers.len();
+    let mut df: HashMap<&str, usize> = HashMap::new();
+    for terms in &terms_by_paper {
+        for term in terms {
+            *df.entry(term.as_str()).or_insert(0) += 1;
+        }
+    }
+
+    // Normalized IDF weight of a shared term (df >= 2). With N <= 2 every shared
+    // term has df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
+    let ln_max = if n > 2 { (n as f64 / 2.0).ln() } else { 0.0 };
+    let weight = |term: &str| -> f64 {
+        if ln_max <= 0.0 {
+            1.0
+        } else {
+            let dft = df[term] as f64;
+            ((n as f64 / dft).ln() / ln_max).clamp(0.0, 1.0)
+        }
+    };
+
     let mut relations = Vec::new();
     for i in 0..papers.len() {
         let a_terms: HashSet<&str> = terms_by_paper[i].iter().map(|s| s.as_str()).collect();
@@ -219,11 +261,17 @@ pub fn compute_coassertion_relations(claims: &[(String, String)]) -> Vec<Compute
                 .collect();
             shared.sort_unstable();
             for term in shared {
-                relations.push(ComputedRelation {
-                    from: papers[i].clone(),
-                    to: papers[j].clone(),
-                    kind: RelationKind::CoAssertion(term.to_string()),
-                });
+                let w = weight(term);
+                if w >= threshold {
+                    relations.push(ComputedRelation {
+                        from: papers[i].clone(),
+                        to: papers[j].clone(),
+                        kind: RelationKind::CoAssertion {
+                            term: term.to_string(),
+                            weight: w,
+                        },
+                    });
+                }
             }
         }
     }
@@ -383,33 +431,62 @@ mod tests {
         );
     }
 
+    /// Flatten co-assertion edges to `(from, to, term)` triples (dropping weight),
+    /// for set/subset assertions.
+    fn coassertion_terms(rels: &[ComputedRelation]) -> Vec<(String, String, String)> {
+        rels.iter()
+            .filter_map(|r| match &r.kind {
+                RelationKind::CoAssertion { term, .. } => {
+                    Some((r.from.clone(), r.to.clone(), term.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// A 4-paper corpus where document frequency separates three terms:
+    /// `rare` (df 2 → weight 1.0), `mid` (df 3 → ~0.415), `common` (df 4 → 0.0).
+    fn tfidf_corpus() -> Vec<(String, String)> {
+        vec![
+            claim("2301.00001", "rare mid common"),
+            claim("2302.00002", "rare mid common"),
+            claim("2303.00003", "mid common"),
+            claim("2304.00004", "common"),
+        ]
+    }
+
     #[test]
     fn test_coassertion_shared_term() {
         let claims = vec![
             claim("2301.00001", "Attention improves accuracy."),
             claim("2302.00002", "Attention reduces cost."),
         ];
-        let rels = compute_coassertion_relations(&claims);
+        // N == 2 → small-corpus guard → weight 1.0 regardless of temperature.
+        let rels = compute_coassertion_relations(&claims, 1.0);
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].from, "2301.00001");
         assert_eq!(rels[0].to, "2302.00002");
         assert_eq!(
             rels[0].kind,
-            RelationKind::CoAssertion("attention".to_string())
+            RelationKind::CoAssertion {
+                term: "attention".to_string(),
+                weight: 1.0,
+            }
         );
     }
 
     #[test]
     fn test_coassertion_no_self_edges() {
         assert!(
-            compute_coassertion_relations(&[claim("2301.00001", "Attention here.")]).is_empty()
+            compute_coassertion_relations(&[claim("2301.00001", "Attention here.")], 1.0)
+                .is_empty()
         );
         // Multiple claims for the same paper group into one node → no self edge.
         let dup = vec![
             claim("2301.00001", "Attention here."),
             claim("2301.00001", "Attention there."),
         ];
-        assert!(compute_coassertion_relations(&dup).is_empty());
+        assert!(compute_coassertion_relations(&dup, 1.0).is_empty());
     }
 
     #[test]
@@ -418,11 +495,14 @@ mod tests {
             claim("2301.00001", "Attention. Attention again."),
             claim("2302.00002", "Attention elsewhere."),
         ];
-        let rels = compute_coassertion_relations(&claims);
+        let rels = compute_coassertion_relations(&claims, 1.0);
         assert_eq!(rels.len(), 1, "a repeated term yields one edge");
         assert_eq!(
             rels[0].kind,
-            RelationKind::CoAssertion("attention".to_string())
+            RelationKind::CoAssertion {
+                term: "attention".to_string(),
+                weight: 1.0,
+            }
         );
     }
 
@@ -432,7 +512,7 @@ mod tests {
             claim("2301.00001", "Recurrence limits speed."),
             claim("2302.00002", "Convolution reduces cost."),
         ];
-        assert!(compute_coassertion_relations(&claims).is_empty());
+        assert!(compute_coassertion_relations(&claims, 1.0).is_empty());
     }
 
     #[test]
@@ -441,13 +521,126 @@ mod tests {
             claim("2301.00001", "Zebra apple mango."),
             claim("2302.00002", "Mango zebra apple."),
         ];
-        let terms: Vec<String> = compute_coassertion_relations(&claims)
+        let terms: Vec<String> = compute_coassertion_relations(&claims, 1.0)
             .into_iter()
             .map(|r| match r.kind {
-                RelationKind::CoAssertion(t) => t,
+                RelationKind::CoAssertion { term, .. } => term,
                 other => panic!("expected CoAssertion, got {other:?}"),
             })
             .collect();
         assert_eq!(terms, vec!["apple", "mango", "zebra"]);
+    }
+
+    #[test]
+    fn test_coassertion_weighted_threshold() {
+        let corpus = tfidf_corpus();
+
+        // At temperature 0.5 (threshold 0.5) only the distinctive `rare` term
+        // (df 2, weight 1.0) links A-B; `mid` (~0.415) and `common` (0.0) drop.
+        let warm = compute_coassertion_relations(&corpus, 0.5);
+        let ab: Vec<&ComputedRelation> = warm
+            .iter()
+            .filter(|r| r.from == "2301.00001" && r.to == "2302.00002")
+            .collect();
+        let terms: Vec<&str> = ab
+            .iter()
+            .filter_map(|r| match &r.kind {
+                RelationKind::CoAssertion { term, .. } => Some(term.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            terms,
+            vec!["rare"],
+            "only the distinctive term clears t=0.5"
+        );
+        match &ab[0].kind {
+            RelationKind::CoAssertion { weight, .. } => {
+                assert!((weight - 1.0).abs() < 1e-9, "df==2 term weighs 1.0")
+            }
+            other => panic!("expected CoAssertion, got {other:?}"),
+        }
+
+        // At temperature 1.0 every shared term is emitted; `mid` (df 3 of N 4)
+        // carries the fractional IDF weight ln(4/3)/ln(4/2).
+        let hot = compute_coassertion_relations(&corpus, 1.0);
+        let mid_w = hot
+            .iter()
+            .find_map(|r| match &r.kind {
+                RelationKind::CoAssertion { term, weight }
+                    if r.from == "2301.00001" && r.to == "2302.00002" && term == "mid" =>
+                {
+                    Some(*weight)
+                }
+                _ => None,
+            })
+            .expect("mid edge present at t=1.0");
+        let expected = (4.0_f64 / 3.0).ln() / (4.0_f64 / 2.0).ln();
+        assert!(
+            (mid_w - expected).abs() < 1e-9,
+            "mid weight {mid_w} != {expected}"
+        );
+    }
+
+    #[test]
+    fn test_coassertion_temperature_endpoints() {
+        let corpus = tfidf_corpus();
+
+        // t = 1.0 → threshold 0.0 → every shared term; A-B shares all three.
+        let hot = coassertion_terms(&compute_coassertion_relations(&corpus, 1.0));
+        let mut ab: Vec<&str> = hot
+            .iter()
+            .filter(|(f, t, _)| f == "2301.00001" && t == "2302.00002")
+            .map(|(_, _, term)| term.as_str())
+            .collect();
+        ab.sort_unstable();
+        assert_eq!(ab, vec!["common", "mid", "rare"]);
+
+        // t = 0.0 → threshold 1.0 → only df==2 terms; `rare` links exactly A-B.
+        let cold = coassertion_terms(&compute_coassertion_relations(&corpus, 0.0));
+        assert!(
+            cold.iter().all(|(_, _, term)| term == "rare"),
+            "only df==2 terms survive t=0.0: {cold:?}"
+        );
+        assert_eq!(cold.len(), 1, "rare links exactly the one pair A-B");
+    }
+
+    #[test]
+    fn test_coassertion_temperature_monotonic() {
+        let corpus = tfidf_corpus();
+        let at = |t: f64| -> HashSet<(String, String, String)> {
+            coassertion_terms(&compute_coassertion_relations(&corpus, t))
+                .into_iter()
+                .collect()
+        };
+        let cold = at(0.0);
+        let warm = at(0.5);
+        let hot = at(1.0);
+        assert!(cold.is_subset(&warm), "edge set grows with temperature");
+        assert!(warm.is_subset(&hot), "edge set grows with temperature");
+        assert!(
+            cold.len() < hot.len(),
+            "higher temperature yields strictly more edges here"
+        );
+    }
+
+    #[test]
+    fn test_coassertion_small_corpus_guard() {
+        // N == 2: no discriminating power; the shared term is kept at any
+        // temperature with a finite weight 1.0 (no NaN from ln(N/2) == 0).
+        let corpus = vec![
+            claim("2301.00001", "attention model"),
+            claim("2302.00002", "attention method"),
+        ];
+        let rels = compute_coassertion_relations(&corpus, 0.0);
+        assert_eq!(rels.len(), 1);
+        match &rels[0].kind {
+            RelationKind::CoAssertion { term, weight } => {
+                assert_eq!(term, "attention");
+                assert!(weight.is_finite(), "weight must be finite, got {weight}");
+                assert_eq!(*weight, 1.0);
+            }
+            other => panic!("expected CoAssertion, got {other:?}"),
+        }
     }
 }

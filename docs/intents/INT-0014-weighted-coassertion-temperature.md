@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0014
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 13 build plan](../sprints/s13/sprint-plans/build-plan.md) (T-1301, T-1302, T-1303)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs)
@@ -101,3 +101,4 @@ additive and backward-recoverable.
   IDF weighting + temperature threshold + `CoAssertion { term, weight }`, T-1302
   `--temperature` CLI flag, T-1303 docs + pipeline test). User-confirmed decisions:
   default temperature `0.5`; weight carried on the edge and shown in `dive` output.
+- 2026-09-01: `planned` → `active` (Sprint 13 build started; T-1301 first).

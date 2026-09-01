@@ -200,7 +200,7 @@ async fn main() -> Result<()> {
             } else {
                 let facts = store.list()?;
                 let mut relations = compute_relations(&facts);
-                relations.extend(compute_coassertion_relations(&store.all_claims()?));
+                relations.extend(compute_coassertion_relations(&store.all_claims()?, 1.0));
                 let nodes = build_dive(&facts, &asserting, &relations);
                 display::display_dive(&concept, &nodes);
             }
