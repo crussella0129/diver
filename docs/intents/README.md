@@ -21,3 +21,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0013](INT-0013-coassertion-relations.md) | Co-assertion relations | realized |
 | [INT-0014](INT-0014-weighted-coassertion-temperature.md) | Weighted co-assertion with adjustable temperature | realized |
 | [INT-0015](INT-0015-harden-extractor-http-boundary.md) | Harden the LLM extractor's HTTP boundary | realized |
+| [INT-0016](INT-0016-structured-claim-extraction.md) | Agent-agnostic structured claim extraction | planned |

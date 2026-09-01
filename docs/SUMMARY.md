@@ -16,6 +16,7 @@
   - [INT-0013 Co-assertion relations](intents/INT-0013-coassertion-relations.md)
   - [INT-0014 Weighted co-assertion with adjustable temperature](intents/INT-0014-weighted-coassertion-temperature.md)
   - [INT-0015 Harden the LLM extractor's HTTP boundary](intents/INT-0015-harden-extractor-http-boundary.md)
+  - [INT-0016 Agent-agnostic structured claim extraction](intents/INT-0016-structured-claim-extraction.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -33,3 +34,4 @@
 - [Sprint 12](sprints/s12/sprint-meta.md)
 - [Sprint 13](sprints/s13/sprint-meta.md)
 - [Sprint 14](sprints/s14/sprint-meta.md)
+- [Sprint 15](sprints/s15/sprint-meta.md)
