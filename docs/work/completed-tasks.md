@@ -317,3 +317,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/Cargo.toml, Cargo.lock, diver-core/src/extract.rs
 - **Commit:** `cd01fe6beda96ed0a5bc8fbd98d9f30dd19a1955`
+
+## T-1403 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md
+- **Commit:** PENDING

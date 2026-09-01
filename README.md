@@ -62,6 +62,9 @@ shown.
 - Requires **`ANTHROPIC_API_KEY`** in the environment.
 - The model defaults to `claude-opus-5`; override it with **`DIVER_MODEL`**
   (e.g. `DIVER_MODEL=claude-haiku-4-5` for a cheaper run).
+- The API root defaults to `https://api.anthropic.com`; override it with
+  **`ANTHROPIC_BASE_URL`** to point at a proxy or a mock server (the request goes
+  to `{base}/v1/messages`).
 - Pass **`--deterministic`** to use the offline sentence-splitter instead of the
   API (no key, no network, no cost).
 
