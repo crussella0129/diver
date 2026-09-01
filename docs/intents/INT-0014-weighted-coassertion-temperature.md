@@ -2,9 +2,9 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0014
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 13 build plan](../sprints/s13/sprint-plans/build-plan.md) (T-1301, T-1302, T-1303)
-- **Completion evidence:** (pending)
+- **Completion evidence:** [T-1301/T-1302/T-1303 completion](../work/completed-tasks.md#t-1301--sprint-13)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs)
 - **Test evidence:** [Sprint 13 test report](../sprints/s13/sprint-tests/test-report.md)
 - **Documentation evidence:** [README.md](../../README.md) (`diver dive --temperature`)
@@ -102,3 +102,9 @@ additive and backward-recoverable.
   `--temperature` CLI flag, T-1303 docs + pipeline test). User-confirmed decisions:
   default temperature `0.5`; weight carried on the edge and shown in `dive` output.
 - 2026-09-01: `planned` → `active` (Sprint 13 build started; T-1301 first).
+- 2026-09-01: `active` → `realized` (Sprint 13: IDF-weighted co-assertion +
+  `--temperature` dial, weight carried on `CoAssertion { term, weight }` and shown
+  in `dive`; default 0.5, `1.0` reproduces INT-0013. 122 tests pass, clippy 0.
+  Structural-ungated direct test and default-0.5 binary assertion deferred — see
+  test critique C-001/C-002; TF weighting / observed-max normalization remain
+  future refinements).
