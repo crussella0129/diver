@@ -293,3 +293,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/graph.rs, diver-core/src/display.rs, diver-core/tests/coassertion.rs, diver-cli/src/main.rs, docs/intents/INT-0014-weighted-coassertion-temperature.md, docs/intents/README.md
 - **Commit:** `f5e6bba961947629da157f1e97d27a25c9316f5d`
+
+## T-1302 — (sprint 13)
+- **Intent:** [INT-0014](../intents/INT-0014-weighted-coassertion-temperature.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs
+- **Commit:** PENDING
