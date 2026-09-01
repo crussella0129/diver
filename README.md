@@ -23,15 +23,32 @@ lists the papers each is related to via deterministic edges:
 
 - **shared category** or **shared author** (structural), and
 - **co-assertion** — the papers' stored claims share a significant term, so `dive`
-  links papers by *what they assert*, not only their metadata.
+  links papers by *what they assert*, not only their metadata. Each co-assertion
+  edge is weighted by the term's inverse document frequency across the corpus
+  (rarer, more distinctive terms score higher), shown as `co-asserts <term> (w=…)`.
+
+### Temperature (`--temperature`)
+
+`diver dive <concept> --temperature <t>` tunes how permissive co-assertion linking
+is, with `t` in `[0.0, 1.0]` (default **0.5**):
+
+- **low** (→ 0.0) links papers only on rare, distinctive shared terms — a sparse,
+  high-signal graph;
+- **high** (→ 1.0) also links on common shared terms — a denser graph. `1.0`
+  admits every shared term (the original unweighted behavior).
+
+Only co-assertion edges are affected; structural (category/author) edges are always
+shown.
 
 Because `dive` reads the persisted assertions, run `diver extract` on the papers
 you care about first — a paper with no extracted assertions won't appear as a
 `dive` seed. (For plain abstract search, use `diver find`.)
 
 ```sh
-diver extract 2301.00001        # persist this paper's assertions
-diver dive attention            # explore papers asserting about "attention"
+diver extract 2301.00001            # persist this paper's assertions
+diver dive attention                # explore (default temperature 0.5)
+diver dive attention --temperature 0.0   # only the most distinctive links
+diver dive attention --temperature 1.0   # every shared term links
 ```
 
 ## Claim extraction (`diver extract`)

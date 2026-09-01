@@ -14,6 +14,7 @@
   - [INT-0011 Resolve pre-existing clippy warnings](intents/INT-0011-clippy-hygiene.md)
   - [INT-0012 Graph layer: ComputedRelation + diver dive](intents/INT-0012-graph-dive.md)
   - [INT-0013 Co-assertion relations](intents/INT-0013-coassertion-relations.md)
+  - [INT-0014 Weighted co-assertion with adjustable temperature](intents/INT-0014-weighted-coassertion-temperature.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -29,3 +30,4 @@
 - [Sprint 10](sprints/s10/sprint-meta.md)
 - [Sprint 11](sprints/s11/sprint-meta.md)
 - [Sprint 12](sprints/s12/sprint-meta.md)
+- [Sprint 13](sprints/s13/sprint-meta.md)

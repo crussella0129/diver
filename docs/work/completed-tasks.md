@@ -287,3 +287,21 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/coassertion.rs
 - **Commit:** `fd3d800c32f5324bac31e4918d2235b15f4630b3`
+
+## T-1301 — (sprint 13)
+- **Intent:** [INT-0014](../intents/INT-0014-weighted-coassertion-temperature.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/graph.rs, diver-core/src/display.rs, diver-core/tests/coassertion.rs, diver-cli/src/main.rs, docs/intents/INT-0014-weighted-coassertion-temperature.md, docs/intents/README.md
+- **Commit:** `f5e6bba961947629da157f1e97d27a25c9316f5d`
+
+## T-1302 — (sprint 13)
+- **Intent:** [INT-0014](../intents/INT-0014-weighted-coassertion-temperature.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs
+- **Commit:** `da96390e10fd0e8c79ca58b73f7d98ccc7baf6b9`
+
+## T-1303 — (sprint 13)
+- **Intent:** [INT-0014](../intents/INT-0014-weighted-coassertion-temperature.md)
+- **Completed:** 2026-09-01
+- **Touched:** README.md, diver-core/tests/coassertion.rs
+- **Commit:** `ace527ad2b255056a321b980e2e6a5e2f0094b68`

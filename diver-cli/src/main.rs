@@ -66,6 +66,12 @@ enum Commands {
     Dive {
         /// Concept to explore (matched against stored assertion claims)
         concept: String,
+
+        /// How permissive co-assertion linking is, in [0.0, 1.0]: 0.0 links only
+        /// rare/distinctive shared claim terms, 1.0 links every shared term.
+        /// Structural (category/author) edges are unaffected.
+        #[arg(long, default_value_t = 0.5, value_parser = parse_temperature)]
+        temperature: f64,
     },
 
     /// List all ingested papers
@@ -192,7 +198,10 @@ async fn main() -> Result<()> {
             display::display_stored_assertions(&arxiv_id, &stored);
         }
 
-        Commands::Dive { concept } => {
+        Commands::Dive {
+            concept,
+            temperature,
+        } => {
             let store = Store::open()?;
             let asserting = store.papers_asserting(&concept)?;
             if asserting.is_empty() {
@@ -200,7 +209,10 @@ async fn main() -> Result<()> {
             } else {
                 let facts = store.list()?;
                 let mut relations = compute_relations(&facts);
-                relations.extend(compute_coassertion_relations(&store.all_claims()?));
+                relations.extend(compute_coassertion_relations(
+                    &store.all_claims()?,
+                    temperature,
+                ));
                 let nodes = build_dive(&facts, &asserting, &relations);
                 display::display_dive(&concept, &nodes);
             }
@@ -258,4 +270,35 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Parse and validate the `diver dive --temperature` value: a finite `f64` in the
+/// closed range `[0.0, 1.0]`. Rejects NaN, infinities, and out-of-range values.
+fn parse_temperature(s: &str) -> Result<f64, String> {
+    let t: f64 = s.parse().map_err(|_| format!("`{s}` is not a number"))?;
+    if !t.is_finite() {
+        return Err(format!("temperature must be a finite number, got `{s}`"));
+    }
+    if !(0.0..=1.0).contains(&t) {
+        return Err(format!("temperature must be in [0.0, 1.0], got `{t}`"));
+    }
+    Ok(t)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_temperature() {
+        assert_eq!(parse_temperature("0.0").unwrap(), 0.0);
+        assert_eq!(parse_temperature("0.5").unwrap(), 0.5);
+        assert_eq!(parse_temperature("1.0").unwrap(), 1.0);
+
+        assert!(parse_temperature("-0.1").is_err(), "below range");
+        assert!(parse_temperature("1.1").is_err(), "above range");
+        assert!(parse_temperature("NaN").is_err(), "NaN rejected");
+        assert!(parse_temperature("inf").is_err(), "infinity rejected");
+        assert!(parse_temperature("warm").is_err(), "non-numeric rejected");
+    }
 }

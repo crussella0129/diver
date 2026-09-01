@@ -144,7 +144,16 @@ fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
         RelationKind::SharedAuthor(name) => format!("shared author {name}"),
-        RelationKind::CoAssertion(term) => format!("co-asserts {term}"),
+        RelationKind::CoAssertion { term, weight } => {
+            // A surviving edge always has weight > 0; show a tiny positive weight as
+            // "<0.01" rather than rounding it to a misleading "0.00" at 2 decimals.
+            let shown = if *weight > 0.0 && *weight < 0.005 {
+                "<0.01".to_string()
+            } else {
+                format!("{weight:.2}")
+            };
+            format!("co-asserts {term} (w={shown})")
+        }
     }
 }
 
@@ -289,10 +298,24 @@ mod tests {
     }
 
     #[test]
-    fn test_relation_reason_coassertion() {
-        let s = relation_reason(&RelationKind::CoAssertion("attention".to_string()));
+    fn test_relation_reason_coassertion_weight() {
+        let s = relation_reason(&RelationKind::CoAssertion {
+            term: "attention".to_string(),
+            weight: 0.82,
+        });
         assert!(s.contains("co-asserts"), "got: {s}");
         assert!(s.contains("attention"), "got: {s}");
+        assert!(s.contains("w=0.82"), "weight shown to 2dp; got: {s}");
+
+        // A tiny positive weight is shown as "<0.01", not a misleading "0.00".
+        let tiny = relation_reason(&RelationKind::CoAssertion {
+            term: "models".to_string(),
+            weight: 0.001,
+        });
+        assert!(
+            tiny.contains("w=<0.01"),
+            "tiny weight not rounded to 0.00; got: {tiny}"
+        );
     }
 
     fn make_paper(summary: &str) -> Paper {
