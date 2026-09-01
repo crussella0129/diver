@@ -6,8 +6,8 @@
 - **Work evidence:** [Sprint 15 build plan](../sprints/s15/sprint-plans/build-plan.md) (T-1501, T-1502, T-1503)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs)
-- **Test evidence:** (pending)
-- **Documentation evidence:** (pending)
+- **Test evidence:** [Sprint 15 test report](../sprints/s15/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (providers config + per-provider examples)
 
 ## Intent
 
