@@ -17,6 +17,8 @@ pub enum RelationKind {
     SharedCategory(String),
     /// The papers share this author.
     SharedAuthor(String),
+    /// The papers' stored claims share this significant term.
+    CoAssertion(String),
 }
 
 /// A deterministic edge between two stored papers, by `arxiv_id`.
@@ -144,6 +146,82 @@ pub fn build_dive(
     }
 
     nodes
+}
+
+/// Function words excluded from co-assertion terms. Kept intentionally small —
+/// domain words are not stopped in v1 (term weighting is future work).
+const STOPWORDS: &[&str] = &[
+    "the", "and", "for", "are", "was", "were", "has", "have", "had", "this", "that", "with",
+    "from", "our", "its", "can", "will", "not", "but", "all", "any", "use", "used", "using",
+    "based", "which", "into", "than", "then", "they", "their", "them", "these", "those", "such",
+    "also", "over", "via", "per", "onto", "upon", "both", "each", "more", "most", "some", "when",
+    "where", "while", "does", "did", "been", "being", "here", "there", "your", "you",
+];
+
+/// Extract a claim's significant terms: alphanumeric tokens, lowercased, of length
+/// >= 3, excluding [`STOPWORDS`]. Punctuation and case are ignored.
+fn significant_terms(claim: &str) -> Vec<String> {
+    claim
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|tok| !tok.is_empty())
+        .map(|tok| tok.to_lowercase())
+        .filter(|tok| tok.chars().count() >= 3 && !STOPWORDS.contains(&tok.as_str()))
+        .collect()
+}
+
+/// Compute co-assertion edges: papers whose persisted claims share a significant
+/// term. `claims` is `(arxiv_id, claim)` for every persisted assertion. One
+/// [`RelationKind::CoAssertion`] edge is emitted per shared term for each unordered
+/// pair of distinct papers; shared terms are emitted in sorted order for stable,
+/// deterministic output. No self-edges.
+pub fn compute_coassertion_relations(claims: &[(String, String)]) -> Vec<ComputedRelation> {
+    // Group each paper's significant terms (deduplicated, order-preserving),
+    // keeping papers in first-seen order.
+    let mut papers: Vec<String> = Vec::new();
+    let mut terms_by_paper: Vec<Vec<String>> = Vec::new();
+    for (arxiv_id, claim) in claims {
+        let idx = match papers.iter().position(|p| p == arxiv_id) {
+            Some(idx) => idx,
+            None => {
+                papers.push(arxiv_id.clone());
+                terms_by_paper.push(Vec::new());
+                papers.len() - 1
+            }
+        };
+        terms_by_paper[idx].extend(significant_terms(claim));
+    }
+    for terms in &mut terms_by_paper {
+        *terms = dedup_preserve_order(terms.iter().map(|s| s.as_str()))
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+    }
+
+    let mut relations = Vec::new();
+    for i in 0..papers.len() {
+        let a_terms: HashSet<&str> = terms_by_paper[i].iter().map(|s| s.as_str()).collect();
+        for j in (i + 1)..papers.len() {
+            if papers[i] == papers[j] {
+                continue;
+            }
+            let mut shared: Vec<&str> = terms_by_paper[j]
+                .iter()
+                .map(|s| s.as_str())
+                .filter(|t| a_terms.contains(t))
+                .collect();
+            shared.sort_unstable();
+            shared.dedup();
+            for term in shared {
+                relations.push(ComputedRelation {
+                    from: papers[i].clone(),
+                    to: papers[j].clone(),
+                    kind: RelationKind::CoAssertion(term.to_string()),
+                });
+            }
+        }
+    }
+
+    relations
 }
 
 #[cfg(test)]
@@ -275,5 +353,88 @@ mod tests {
         let nodes = build_dive(&facts, &asserting, &[]);
         assert_eq!(nodes.len(), 1, "same paper groups into one node");
         assert_eq!(nodes[0].claims.len(), 2);
+    }
+
+    fn claim(id: &str, text: &str) -> (String, String) {
+        (id.to_string(), text.to_string())
+    }
+
+    #[test]
+    fn test_significant_terms() {
+        assert_eq!(
+            significant_terms("Attention improves the RNN accuracy!"),
+            vec!["attention", "improves", "rnn", "accuracy"],
+            "'the' stopped; punctuation/case ignored; 3-char acronym kept"
+        );
+        // Two-char tokens and stopwords are dropped.
+        assert!(significant_terms("AI is ML").is_empty());
+    }
+
+    #[test]
+    fn test_coassertion_shared_term() {
+        let claims = vec![
+            claim("2301.00001", "Attention improves accuracy."),
+            claim("2302.00002", "Attention reduces cost."),
+        ];
+        let rels = compute_coassertion_relations(&claims);
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].from, "2301.00001");
+        assert_eq!(rels[0].to, "2302.00002");
+        assert_eq!(
+            rels[0].kind,
+            RelationKind::CoAssertion("attention".to_string())
+        );
+    }
+
+    #[test]
+    fn test_coassertion_no_self_edges() {
+        assert!(
+            compute_coassertion_relations(&[claim("2301.00001", "Attention here.")]).is_empty()
+        );
+        // Multiple claims for the same paper group into one node → no self edge.
+        let dup = vec![
+            claim("2301.00001", "Attention here."),
+            claim("2301.00001", "Attention there."),
+        ];
+        assert!(compute_coassertion_relations(&dup).is_empty());
+    }
+
+    #[test]
+    fn test_coassertion_dedups_repeated_term() {
+        let claims = vec![
+            claim("2301.00001", "Attention. Attention again."),
+            claim("2302.00002", "Attention elsewhere."),
+        ];
+        let rels = compute_coassertion_relations(&claims);
+        assert_eq!(rels.len(), 1, "a repeated term yields one edge");
+        assert_eq!(
+            rels[0].kind,
+            RelationKind::CoAssertion("attention".to_string())
+        );
+    }
+
+    #[test]
+    fn test_coassertion_disjoint_none() {
+        let claims = vec![
+            claim("2301.00001", "Recurrence limits speed."),
+            claim("2302.00002", "Convolution reduces cost."),
+        ];
+        assert!(compute_coassertion_relations(&claims).is_empty());
+    }
+
+    #[test]
+    fn test_coassertion_sorted_deterministic() {
+        let claims = vec![
+            claim("2301.00001", "Zebra apple mango."),
+            claim("2302.00002", "Mango zebra apple."),
+        ];
+        let terms: Vec<String> = compute_coassertion_relations(&claims)
+            .into_iter()
+            .map(|r| match r.kind {
+                RelationKind::CoAssertion(t) => t,
+                other => panic!("expected CoAssertion, got {other:?}"),
+            })
+            .collect();
+        assert_eq!(terms, vec!["apple", "mango", "zebra"]);
     }
 }

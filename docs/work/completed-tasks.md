@@ -269,3 +269,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/dive_graph.rs
 - **Commit:** `a61b14a000294856050ae1a7fb391a2e956f3143`
+
+## T-1201 — (sprint 12)
+- **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/graph.rs, diver-core/src/display.rs
+- **Commit:** PENDING

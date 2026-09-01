@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0013
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 12 build plan](../sprints/s12/sprint-plans/build-plan.md) (T-1201, T-1202, T-1203)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -85,3 +85,4 @@ TF-IDF or semantic edges are later refinements that plug into the same
 - 2026-09-01: created as `proposed`.
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 12 build plan (T-1201
   co-assertion edges, T-1202 `all_claims`, T-1203 `diver dive` wiring).
+- 2026-09-01: `planned` → `active` (Sprint 12 build started; T-1201 first).
