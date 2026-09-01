@@ -323,3 +323,21 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md
 - **Commit:** `daa2fd638bdee5991b555a8b6cce0f49e1003ffe`
+
+## T-1501 — (sprint 15)
+- **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/extract.rs, diver-core/tests/llm_extract_pipeline.rs, diver-core/tests/persist_pipeline.rs (compile-forced envelope migration), docs/intents/INT-0016-structured-claim-extraction.md, docs/intents/README.md
+- **Commit:** `685c29ba6922fdd714d75b0f66c4ff2457219668`
+
+## T-1502 — (sprint 15)
+- **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/extract.rs
+- **Commit:** `2a9d56a159d7be7405d8021ee25108a08ab53950`
+
+## T-1503 — (sprint 15)
+- **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
+- **Completed:** 2026-09-01
+- **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md (module doc already updated in T-1501)
+- **Commit:** `ddaaf30d281e0744c78873f32f102269cd7819e1`

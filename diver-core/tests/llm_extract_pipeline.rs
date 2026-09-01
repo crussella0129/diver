@@ -22,17 +22,21 @@ fn sample_fact() -> SourceFact {
     }
 }
 
-/// A Messages API response whose model output claims two things: one grounded in
-/// the abstract, one hallucinated. The full LLM pipeline must admit only the
-/// grounded one and validate it to `Supported`.
+/// A structured (tool-use) response whose model output claims two things: one
+/// grounded in the abstract, one hallucinated. The full LLM pipeline must admit only
+/// the grounded one and validate it to `Supported`.
 #[test]
 fn test_llm_extract_pipeline() {
     let fact = sample_fact();
+    // Anthropic tool_use envelope: input is the structured { claims: [...] }.
     let body = r#"{
         "content": [
-            {"type": "text", "text": "[{\"claim\": \"Attention improves accuracy.\", \"quote\": \"attention improves accuracy\"}, {\"claim\": \"The model teleports data.\", \"quote\": \"teleports data instantly across the globe\"}]"}
+            {"type": "tool_use", "id": "tu_1", "name": "record_claims", "input": {"claims": [
+                {"claim": "Attention improves accuracy.", "quote": "attention improves accuracy"},
+                {"claim": "The model teleports data.", "quote": "teleports data instantly across the globe"}
+            ]}}
         ],
-        "stop_reason": "end_turn"
+        "stop_reason": "tool_use"
     }"#;
 
     // parse_claims grounds the claims: only the first survives.
