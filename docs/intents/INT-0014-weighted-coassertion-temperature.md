@@ -6,8 +6,8 @@
 - **Work evidence:** [Sprint 13 build plan](../sprints/s13/sprint-plans/build-plan.md) (T-1301, T-1302, T-1303)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs)
-- **Test evidence:** (pending)
-- **Documentation evidence:** (pending — README `diver dive --temperature`)
+- **Test evidence:** [Sprint 13 test report](../sprints/s13/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (`diver dive --temperature`)
 
 ## Intent
 
