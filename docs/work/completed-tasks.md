@@ -262,4 +262,4 @@
 - **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/store.rs
-- **Commit:** PENDING
+- **Commit:** `c0642193b87c7b0c6171eb1fe23363ea657447b6`
