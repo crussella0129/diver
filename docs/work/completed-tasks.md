@@ -322,4 +322,4 @@
 - **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md
-- **Commit:** PENDING
+- **Commit:** `daa2fd638bdee5991b555a8b6cce0f49e1003ffe`
