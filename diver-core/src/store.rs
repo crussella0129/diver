@@ -528,6 +528,33 @@ impl Store {
             .context("failed to collect support quotes")?;
         Ok(quotes)
     }
+
+    /// Papers whose persisted assertion claims contain `concept`
+    /// (case-insensitive). Returns `(arxiv_id, claim)` per matching assertion,
+    /// ordered by paper then insertion; empty when none match. Seeds `diver dive`.
+    pub fn papers_asserting(&self, concept: &str) -> Result<Vec<(String, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT p.arxiv_id, a.claim
+                 FROM assertions a
+                 JOIN papers p ON p.id = a.paper_id
+                 WHERE a.claim LIKE '%' || ?1 || '%'
+                 ORDER BY p.arxiv_id, a.id",
+            )
+            .context("failed to prepare papers_asserting query")?;
+        let rows = stmt
+            .query_map(rusqlite::params![concept], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .context("failed to execute papers_asserting query")?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row.context("failed to read asserting row")?);
+        }
+        Ok(result)
+    }
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
@@ -750,6 +777,39 @@ mod tests {
             .save(&test_fact("2301.00001", "v1", "T", "2026-08-31T00:00:00Z"))
             .unwrap();
         assert!(store.get_assertions("2301.00001").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_papers_asserting_matches() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v1",
+                &[
+                    supported(
+                        "Attention improves accuracy.",
+                        &["attention improves accuracy"],
+                    ),
+                    supported("Recurrence limits speed.", &["recurrence limits speed"]),
+                ],
+            )
+            .unwrap();
+
+        // Case-insensitive substring match on the claim.
+        let hits = store.papers_asserting("ATTENTION").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].0, "2301.00001");
+        assert_eq!(hits[0].1, "Attention improves accuracy.");
+
+        // A concept in no claim yields nothing.
+        assert!(store.papers_asserting("teleportation").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_papers_asserting_empty() {
+        let store = Store::open_in_memory().unwrap();
+        assert!(store.papers_asserting("anything").unwrap().is_empty());
     }
 
     fn test_fact(id: &str, version: &str, title: &str, ingested_at: &str) -> SourceFact {
