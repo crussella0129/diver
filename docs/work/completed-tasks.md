@@ -298,4 +298,4 @@
 - **Intent:** [INT-0014](../intents/INT-0014-weighted-coassertion-temperature.md)
 - **Completed:** 2026-09-01
 - **Touched:** diver-cli/src/main.rs
-- **Commit:** PENDING
+- **Commit:** `da96390e10fd0e8c79ca58b73f7d98ccc7baf6b9`
