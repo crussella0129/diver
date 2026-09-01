@@ -323,3 +323,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md
 - **Commit:** `daa2fd638bdee5991b555a8b6cce0f49e1003ffe`
+
+## T-1501 — (sprint 15)
+- **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/extract.rs, diver-core/tests/llm_extract_pipeline.rs, diver-core/tests/persist_pipeline.rs (compile-forced envelope migration), docs/intents/INT-0016-structured-claim-extraction.md, docs/intents/README.md
+- **Commit:** PENDING

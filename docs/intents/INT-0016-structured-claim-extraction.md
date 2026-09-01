@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0016
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 15 build plan](../sprints/s15/sprint-plans/build-plan.md) (T-1501, T-1502, T-1503)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs)
@@ -98,3 +98,4 @@ providers swappable from a front-end without a rebuild. Structured outputs (tool
   OpenAI-compatible via `ferric server`.
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 15 build plan (T-1501 shapes +
   dispatch + tests, T-1502 hot-loadable config + tests, T-1503 docs).
+- 2026-09-01: `planned` → `active` (Sprint 15 build started; T-1501 first).

@@ -29,7 +29,8 @@ fn test_persist_pipeline() {
     let fact = sample_fact();
     store.save(&fact).unwrap();
 
-    let body = r#"{"content": [{"type": "text", "text": "[{\"claim\": \"Attention improves accuracy.\", \"quote\": \"attention improves accuracy\"}]"}]}"#;
+    // Structured (tool_use) envelope: input is { claims: [...] }.
+    let body = r#"{"content": [{"type": "tool_use", "id": "tu_1", "name": "record_claims", "input": {"claims": [{"claim": "Attention improves accuracy.", "quote": "attention improves accuracy"}]}}]}"#;
     let candidates = parse_claims(body, &fact).unwrap();
     let supported: Vec<_> = candidates
         .into_iter()
