@@ -562,6 +562,29 @@ impl Store {
         }
         Ok(result)
     }
+
+    /// Every persisted assertion as `(arxiv_id, claim)`, ordered by paper then
+    /// insertion; empty when none. The corpus of claims co-assertion edges relate.
+    pub fn all_claims(&self) -> Result<Vec<(String, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT p.arxiv_id, a.claim
+                 FROM assertions a
+                 JOIN papers p ON p.id = a.paper_id
+                 ORDER BY p.arxiv_id, a.id",
+            )
+            .context("failed to prepare all_claims query")?;
+        let rows = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .context("failed to execute all_claims query")?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row.context("failed to read claim row")?);
+        }
+        Ok(result)
+    }
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
@@ -841,6 +864,35 @@ mod tests {
 
         // A lone `_` must not act as a single-char wildcard either.
         assert!(store.papers_asserting("50_").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_all_claims() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions("2301.00001", "v1", &[supported("Claim A one.", &["q"])])
+            .unwrap();
+        store
+            .save_assertions(
+                "2302.00002",
+                "v1",
+                &[
+                    supported("Claim B one.", &["q"]),
+                    supported("Claim B two.", &["q"]),
+                ],
+            )
+            .unwrap();
+
+        let claims = store.all_claims().unwrap();
+        assert_eq!(claims.len(), 3);
+        assert!(claims.contains(&("2301.00001".to_string(), "Claim A one.".to_string())));
+        assert!(claims.contains(&("2302.00002".to_string(), "Claim B two.".to_string())));
+    }
+
+    #[test]
+    fn test_all_claims_empty() {
+        let store = Store::open_in_memory().unwrap();
+        assert!(store.all_claims().unwrap().is_empty());
     }
 
     fn test_fact(id: &str, version: &str, title: &str, ingested_at: &str) -> SourceFact {
