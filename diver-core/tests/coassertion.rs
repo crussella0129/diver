@@ -84,3 +84,69 @@ fn test_coassertion_pipeline() {
                 }
     }));
 }
+
+/// A 4-paper corpus where "attention" is rare (df 2, weight 1.0) and "models" is
+/// corpus-ubiquitous (df 4, weight 0.0). Low temperature keeps only the rare edge;
+/// high temperature admits the common one too.
+#[test]
+fn test_coassertion_temperature_pipeline() {
+    let store = Store::open_in_memory().unwrap();
+    for (id, cat, author) in [
+        ("2301.00001", "cs.CL", "Alice"),
+        ("2302.00002", "math.NA", "Bob"),
+        ("2303.00003", "cs.LG", "Carol"),
+        ("2304.00004", "stat.ML", "Dave"),
+    ] {
+        store.save(&fact(id, "Paper", cat, author)).unwrap();
+    }
+    for (id, claim) in [
+        ("2301.00001", "attention drives models"),
+        ("2302.00002", "attention shapes models"),
+        ("2303.00003", "recurrence bounds models"),
+        ("2304.00004", "convolution stacks models"),
+    ] {
+        store
+            .save_assertions(id, "v1", &[supported(id, claim)])
+            .unwrap();
+    }
+    let corpus = store.all_claims().unwrap();
+
+    // Low temperature: only the distinctive term "attention" (df 2) links, and only
+    // the one pair that shares it. The ubiquitous "models" (df 4) is filtered out.
+    let cold = compute_coassertion_relations(&corpus, 0.0);
+    assert_eq!(cold.len(), 1, "only the rare-term edge survives t=0.0");
+    assert_eq!(cold[0].from, "2301.00001");
+    assert_eq!(cold[0].to, "2302.00002");
+    match &cold[0].kind {
+        RelationKind::CoAssertion { term, weight } => {
+            assert_eq!(term, "attention");
+            assert_eq!(*weight, 1.0);
+        }
+        other => panic!("expected CoAssertion, got {other:?}"),
+    }
+
+    // High temperature admits the common term, so strictly more edges appear,
+    // including "models" edges the low-temperature run dropped.
+    let hot = compute_coassertion_relations(&corpus, 1.0);
+    assert!(
+        hot.len() > cold.len(),
+        "higher temperature admits common-term edges"
+    );
+    assert!(
+        hot.iter().any(|r| matches!(
+            &r.kind,
+            RelationKind::CoAssertion { term, .. } if term == "models"
+        )),
+        "the ubiquitous term links papers only at high temperature"
+    );
+
+    // The distinctive edge still surfaces in the dive neighborhood.
+    let facts = store.list().unwrap();
+    let asserting = store.papers_asserting("attention").unwrap();
+    let nodes = build_dive(&facts, &asserting, &hot);
+    let node_a = nodes.iter().find(|n| n.arxiv_id == "2301.00001").unwrap();
+    assert!(node_a.related.iter().any(|(id, kind)| {
+        id == "2302.00002"
+            && matches!(kind, RelationKind::CoAssertion { term, .. } if term == "attention")
+    }));
+}
