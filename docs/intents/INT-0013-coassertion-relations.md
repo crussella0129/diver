@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0013
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 12 build plan](../sprints/s12/sprint-plans/build-plan.md) (T-1201, T-1202, T-1203)
-- **Completion evidence:** none
-- **Code evidence:** none
+- **Completion evidence:** [T-1201/T-1202/T-1203 completion](../work/completed-tasks.md#t-1201--sprint-12)
+- **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 12 test report](../sprints/s12/sprint-tests/test-report.md)
-- **Documentation evidence:** none
+- **Documentation evidence:** [README.md](../../README.md) (`diver dive` co-assertion edges)
 
 ## Intent
 
@@ -86,3 +86,7 @@ TF-IDF or semantic edges are later refinements that plug into the same
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 12 build plan (T-1201
   co-assertion edges, T-1202 `all_claims`, T-1203 `diver dive` wiring).
 - 2026-09-01: `planned` → `active` (Sprint 12 build started; T-1201 first).
+- 2026-09-01: `active` → `realized` (Sprint 12: `RelationKind::CoAssertion` +
+  `compute_coassertion_relations` + `significant_terms` + `Store::all_claims`,
+  wired into `diver dive` so papers link by shared claim terms; 116 tests pass,
+  clippy 0. Term weighting / binary populated-E2E deferred — see critique).
