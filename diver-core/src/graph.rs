@@ -244,17 +244,20 @@ pub fn compute_coassertion_relations(
         }
     }
 
-    // Normalized IDF weight of a shared term (df >= 2). With N <= 2 every shared
-    // term has df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
+    // Normalized IDF weight per term, computed once. With N <= 2 every shared term
+    // has df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
     let ln_max = if n > 2 { (n as f64 / 2.0).ln() } else { 0.0 };
-    let weight = |term: &str| -> f64 {
-        if ln_max <= 0.0 {
-            1.0
-        } else {
-            let dft = df[term] as f64;
-            ((n as f64 / dft).ln() / ln_max).clamp(0.0, 1.0)
-        }
-    };
+    let weight_by_term: HashMap<&str, f64> = df
+        .iter()
+        .map(|(&term, &dft)| {
+            let w = if ln_max <= 0.0 {
+                1.0
+            } else {
+                ((n as f64 / dft as f64).ln() / ln_max).clamp(0.0, 1.0)
+            };
+            (term, w)
+        })
+        .collect();
 
     let mut relations = Vec::new();
     for i in 0..papers.len() {
@@ -271,7 +274,7 @@ pub fn compute_coassertion_relations(
                 .collect();
             shared.sort_unstable();
             for term in shared {
-                let w = weight(term);
+                let w = weight_by_term[term];
                 if w >= threshold {
                     relations.push(ComputedRelation {
                         from: papers[i].clone(),
