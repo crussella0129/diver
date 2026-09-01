@@ -21,8 +21,10 @@ use crate::observation::Observation;
 /// the most capable model; the user downgrades via `DIVER_MODEL` for cost.
 const DEFAULT_MODEL: &str = "claude-opus-5";
 
-/// Anthropic Messages API endpoint.
-const MESSAGES_ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+/// Default Anthropic API root. `extract` posts to `{base_url}/v1/messages`. The
+/// root is injectable (via [`LlmExtractor::build`] / `ANTHROPIC_BASE_URL`) so tests
+/// can point the client at a local mock server.
+const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 
 /// Instruction to Claude: extract grounded claims as a JSON array.
 const SYSTEM_PROMPT: &str = "You extract the discrete factual claims a research \
@@ -40,6 +42,7 @@ pub struct LlmExtractor {
     http: reqwest::Client,
     model: String,
     api_key: String,
+    base_url: String,
 }
 
 // Manual Debug that redacts the API key — never print the secret.
@@ -59,13 +62,18 @@ impl LlmExtractor {
         Self::build(
             std::env::var("ANTHROPIC_API_KEY").ok(),
             std::env::var("DIVER_MODEL").ok(),
+            std::env::var("ANTHROPIC_BASE_URL").ok(),
         )
     }
 
     /// Pure construction logic (env-reading split out for testability). A missing
     /// or blank key is an actionable error; a missing/blank model falls back to
-    /// [`DEFAULT_MODEL`].
-    fn build(api_key: Option<String>, model: Option<String>) -> Result<Self> {
+    /// [`DEFAULT_MODEL`] and a missing/blank base URL to [`DEFAULT_BASE_URL`].
+    fn build(
+        api_key: Option<String>,
+        model: Option<String>,
+        base_url: Option<String>,
+    ) -> Result<Self> {
         let api_key = api_key.filter(|k| !k.trim().is_empty()).context(
             "ANTHROPIC_API_KEY is not set — set it to use LLM extraction, or run \
              `diver extract <id> --deterministic` for the offline extractor",
@@ -73,6 +81,9 @@ impl LlmExtractor {
         let model = model
             .filter(|m| !m.trim().is_empty())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        let base_url = base_url
+            .filter(|u| !u.trim().is_empty())
+            .unwrap_or_else(|| DEFAULT_BASE_URL.to_string());
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()
@@ -81,6 +92,7 @@ impl LlmExtractor {
             http,
             model,
             api_key,
+            base_url,
         })
     }
 
@@ -97,7 +109,7 @@ impl LlmExtractor {
 
         let response = self
             .http
-            .post(MESSAGES_ENDPOINT)
+            .post(format!("{}/v1/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -231,6 +243,8 @@ fn normalize(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::id::ArxivCategory;
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn fact_with_summary(summary: &str) -> SourceFact {
         let primary = ArxivCategory::parse("cs.CL").unwrap();
@@ -346,10 +360,12 @@ mod tests {
 
     #[test]
     fn test_build_missing_key_errors() {
-        let err = LlmExtractor::build(None, None).unwrap_err().to_string();
+        let err = LlmExtractor::build(None, None, None)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("ANTHROPIC_API_KEY"), "got: {err}");
         // A blank/whitespace key is treated as absent.
-        let err_blank = LlmExtractor::build(Some("   ".to_string()), None)
+        let err_blank = LlmExtractor::build(Some("   ".to_string()), None, None)
             .unwrap_err()
             .to_string();
         assert!(err_blank.contains("ANTHROPIC_API_KEY"), "got: {err_blank}");
@@ -357,19 +373,105 @@ mod tests {
 
     #[test]
     fn test_build_model_default_and_override() {
-        let default = LlmExtractor::build(Some("sk-test".to_string()), None).unwrap();
+        let default = LlmExtractor::build(Some("sk-test".to_string()), None, None).unwrap();
         assert_eq!(default.model, "claude-opus-5");
 
         let overridden = LlmExtractor::build(
             Some("sk-test".to_string()),
             Some("claude-haiku-4-5".to_string()),
+            None,
         )
         .unwrap();
         assert_eq!(overridden.model, "claude-haiku-4-5");
 
         // A blank model falls back to the default.
         let blank =
-            LlmExtractor::build(Some("sk-test".to_string()), Some("  ".to_string())).unwrap();
+            LlmExtractor::build(Some("sk-test".to_string()), Some("  ".to_string()), None).unwrap();
         assert_eq!(blank.model, "claude-opus-5");
+    }
+
+    #[test]
+    fn test_build_base_url_default_and_override() {
+        // Unset/blank base URL falls back to the default endpoint root.
+        let default = LlmExtractor::build(Some("sk-test".to_string()), None, None).unwrap();
+        assert_eq!(default.base_url, "https://api.anthropic.com");
+        let blank = LlmExtractor::build(Some("sk-test".to_string()), None, Some("   ".to_string()))
+            .unwrap();
+        assert_eq!(blank.base_url, "https://api.anthropic.com");
+
+        // An explicit base URL (e.g. a mock server) is used verbatim.
+        let overridden = LlmExtractor::build(
+            Some("sk-test".to_string()),
+            None,
+            Some("http://127.0.0.1:9".to_string()),
+        )
+        .unwrap();
+        assert_eq!(overridden.base_url, "http://127.0.0.1:9");
+    }
+
+    /// The real `reqwest` round-trip against a mock: a 2xx Messages envelope yields
+    /// the grounded candidate, and the request carried the right headers and body.
+    #[tokio::test]
+    async fn test_extract_http_happy_path() {
+        let server = MockServer::start().await;
+        // Model output: one grounded claim + one hallucinated claim.
+        let response_body = envelope(
+            r#"[{"claim": "Attention improves accuracy.", "quote": "attention improves accuracy"}, {"claim": "It teleports data.", "quote": "teleports data across the globe"}]"#,
+        );
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .and(header("x-api-key", "sk-test"))
+            .and(header("anthropic-version", "2023-06-01"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(response_body))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let fact = fact_with_summary("In this work, attention improves accuracy on the benchmark.");
+        let extractor = LlmExtractor::build(
+            Some("sk-test".to_string()),
+            Some("claude-sonnet-test".to_string()),
+            Some(server.uri()),
+        )
+        .unwrap();
+
+        let candidates = extractor.extract(&fact).await.unwrap();
+        // Grounding still applies over the real round-trip: only the grounded claim survives.
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].claim(), "Attention improves accuracy.");
+
+        // The request the mock received carried the configured model, the system
+        // prompt, and the abstract in its body.
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let sent = String::from_utf8_lossy(&requests[0].body);
+        assert!(sent.contains("claude-sonnet-test"), "model in body: {sent}");
+        assert!(
+            sent.contains("discrete factual claims"),
+            "system prompt in body: {sent}"
+        );
+        assert!(
+            sent.contains("attention improves accuracy on the benchmark"),
+            "abstract in body: {sent}"
+        );
+    }
+
+    /// A non-2xx response surfaces as an error carrying the status and the body.
+    #[tokio::test]
+    async fn test_extract_http_error_status() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/messages"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("upstream boom"))
+            .mount(&server)
+            .await;
+
+        let fact = fact_with_summary("Anything at all.");
+        let extractor =
+            LlmExtractor::build(Some("sk-test".to_string()), None, Some(server.uri())).unwrap();
+
+        let err = extractor.extract(&fact).await.unwrap_err().to_string();
+        assert!(err.contains("500"), "status in error: {err}");
+        assert!(err.contains("upstream boom"), "body in error: {err}");
     }
 }

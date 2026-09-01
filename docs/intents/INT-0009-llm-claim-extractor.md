@@ -98,6 +98,12 @@ layer valuable and what the future graph and synthesis layers will consume.
 - LLM non-determinism is confined to the HTTP boundary; parsing and grounding are
   pure and tested. Live end-to-end extraction is verified manually (a real run
   with a key), not in the automated suite.
+  - **Update (INT-0015, Sprint 14):** the HTTP boundary now has automated coverage.
+    `extract`'s request construction (endpoint, `x-api-key`/`anthropic-version`
+    headers, body) and its non-2xx error path are exercised by `wiremock`-backed
+    transport tests against a mock server via an injectable `base_url`
+    (`ANTHROPIC_BASE_URL`). Only real-endpoint reachability/credentials remain a
+    manual check. See [[harden-extractor-http-boundary]].
 
 ## Transition history
 - 2026-08-31: created as `proposed`.

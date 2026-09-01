@@ -305,3 +305,21 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, diver-core/tests/coassertion.rs
 - **Commit:** `ace527ad2b255056a321b980e2e6a5e2f0094b68`
+
+## T-1401 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/extract.rs, docs/intents/INT-0015-harden-extractor-http-boundary.md, docs/intents/README.md
+- **Commit:** `0f140ee9931864fd3b2035af1018cc454afe0e03`
+
+## T-1402 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/Cargo.toml, Cargo.lock, diver-core/src/extract.rs
+- **Commit:** `cd01fe6beda96ed0a5bc8fbd98d9f30dd19a1955`
+
+## T-1403 — (sprint 14)
+- **Intent:** [INT-0015](../intents/INT-0015-harden-extractor-http-boundary.md)
+- **Completed:** 2026-09-01
+- **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md
+- **Commit:** `daa2fd638bdee5991b555a8b6cce0f49e1003ffe`

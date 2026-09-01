@@ -20,3 +20,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0012](INT-0012-graph-dive.md) | Graph layer: ComputedRelation + `diver dive` | realized |
 | [INT-0013](INT-0013-coassertion-relations.md) | Co-assertion relations | realized |
 | [INT-0014](INT-0014-weighted-coassertion-temperature.md) | Weighted co-assertion with adjustable temperature | realized |
+| [INT-0015](INT-0015-harden-extractor-http-boundary.md) | Harden the LLM extractor's HTTP boundary | realized |
