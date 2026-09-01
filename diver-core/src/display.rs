@@ -144,6 +144,7 @@ fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
         RelationKind::SharedAuthor(name) => format!("shared author {name}"),
+        RelationKind::CoAssertion(term) => format!("co-asserts {term}"),
     }
 }
 
@@ -285,6 +286,13 @@ mod tests {
         );
         assert_eq!(related_overflow(11, 10), Some(1));
         assert_eq!(related_overflow(25, 10), Some(15));
+    }
+
+    #[test]
+    fn test_relation_reason_coassertion() {
+        let s = relation_reason(&RelationKind::CoAssertion("attention".to_string()));
+        assert!(s.contains("co-asserts"), "got: {s}");
+        assert!(s.contains("attention"), "got: {s}");
     }
 
     fn make_paper(summary: &str) -> Paper {

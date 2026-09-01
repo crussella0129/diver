@@ -18,3 +18,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0010](INT-0010-persist-epistemic-layer.md) | Persist the epistemic layer | realized |
 | [INT-0011](INT-0011-clippy-hygiene.md) | Resolve pre-existing clippy warnings (maintenance) | realized |
 | [INT-0012](INT-0012-graph-dive.md) | Graph layer: ComputedRelation + `diver dive` | realized |
+| [INT-0013](INT-0013-coassertion-relations.md) | Co-assertion relations | realized |

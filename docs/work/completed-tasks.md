@@ -269,3 +269,21 @@
 - **Completed:** 2026-09-01
 - **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/dive_graph.rs
 - **Commit:** `a61b14a000294856050ae1a7fb391a2e956f3143`
+
+## T-1201 — (sprint 12)
+- **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/graph.rs, diver-core/src/display.rs
+- **Commit:** `f26070e221258944f2ac5174a7a0594035a8585e`
+
+## T-1202 — (sprint 12)
+- **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/store.rs
+- **Commit:** `2150a8febea8a47ac2b60a462ab8dd6ed1558166`
+
+## T-1203 — (sprint 12)
+- **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs, README.md, diver-core/tests/coassertion.rs
+- **Commit:** `fd3d800c32f5324bac31e4918d2235b15f4630b3`

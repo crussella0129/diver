@@ -6,7 +6,7 @@ use diver_core::client::ArxivClient;
 use diver_core::display;
 use diver_core::extract::LlmExtractor;
 use diver_core::fact::SourceFact;
-use diver_core::graph::{build_dive, compute_relations};
+use diver_core::graph::{build_dive, compute_coassertion_relations, compute_relations};
 use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
 use diver_core::store::Store;
@@ -199,7 +199,8 @@ async fn main() -> Result<()> {
                 display::display_dive(&concept, &[]);
             } else {
                 let facts = store.list()?;
-                let relations = compute_relations(&facts);
+                let mut relations = compute_relations(&facts);
+                relations.extend(compute_coassertion_relations(&store.all_claims()?));
                 let nodes = build_dive(&facts, &asserting, &relations);
                 display::display_dive(&concept, &nodes);
             }
