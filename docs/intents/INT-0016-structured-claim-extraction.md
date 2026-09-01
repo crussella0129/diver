@@ -2,9 +2,9 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0016
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 15 build plan](../sprints/s15/sprint-plans/build-plan.md) (T-1501, T-1502, T-1503)
-- **Completion evidence:** (pending)
+- **Completion evidence:** [T-1501/T-1502/T-1503 completion](../work/completed-tasks.md#t-1501--sprint-15)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs)
 - **Test evidence:** [Sprint 15 test report](../sprints/s15/sprint-tests/test-report.md)
 - **Documentation evidence:** [README.md](../../README.md) (providers config + per-provider examples)
@@ -99,3 +99,10 @@ providers swappable from a front-end without a rebuild. Structured outputs (tool
 - 2026-09-01: `proposed` → `planned`; linked to Sprint 15 build plan (T-1501 shapes +
   dispatch + tests, T-1502 hot-loadable config + tests, T-1503 docs).
 - 2026-09-01: `planned` → `active` (Sprint 15 build started; T-1501 first).
+- 2026-09-01: `active` → `realized` (Sprint 15: provider substrate — `ProviderShape`
+  Anthropic/OpenAiCompatible + `ProviderConfig`/`from_config` + hot-loadable `providers.json`
+  (`resolve_provider`, `DIVER_PROVIDER`, `api_key_env`, Anthropic env fallback); structured
+  output via Anthropic tool-use and OpenAI `response_format` json_schema (covers OpenAI/Grok/
+  Animus_Ferric); fence heuristics deleted; grounding + validate unchanged. 128 tests pass,
+  clippy 0. Deferred: OpenAI parse-error unit test, `from_env` file/env wiring test,
+  `response_format` portability fallback — see test critique C-001/C-002/C-003).
