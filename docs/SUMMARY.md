@@ -12,6 +12,7 @@
   - [INT-0009 LLM-backed claim extractor](intents/INT-0009-llm-claim-extractor.md)
   - [INT-0010 Persist the epistemic layer](intents/INT-0010-persist-epistemic-layer.md)
   - [INT-0011 Resolve pre-existing clippy warnings](intents/INT-0011-clippy-hygiene.md)
+  - [INT-0012 Graph layer: ComputedRelation + diver dive](intents/INT-0012-graph-dive.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -25,3 +26,4 @@
 - [Sprint 8](sprints/s8/sprint-meta.md)
 - [Sprint 9](sprints/s9/sprint-meta.md)
 - [Sprint 10](sprints/s10/sprint-meta.md)
+- [Sprint 11](sprints/s11/sprint-meta.md)
