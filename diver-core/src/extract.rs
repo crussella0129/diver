@@ -91,12 +91,15 @@ impl LlmExtractor {
     /// from the named `api_key_env`. With no config file, falls back to the Anthropic
     /// env path (`ANTHROPIC_API_KEY` / `DIVER_MODEL` / `ANTHROPIC_BASE_URL`).
     pub fn from_env() -> Result<Self> {
-        let contents = providers_config_path().and_then(|p| std::fs::read_to_string(p).ok());
-        let config = resolve_provider(
-            contents.as_deref(),
-            std::env::var("DIVER_PROVIDER").ok().as_deref(),
-            |k| std::env::var(k).ok(),
-        )?;
+        let contents = read_providers_config()?;
+        // A blank DIVER_PROVIDER is treated as unset (falls back to the file's `active`),
+        // consistent with the other env reads.
+        let provider = std::env::var("DIVER_PROVIDER")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let config = resolve_provider(contents.as_deref(), provider.as_deref(), |k| {
+            std::env::var(k).ok()
+        })?;
         Self::from_config(config)
     }
 
@@ -169,9 +172,12 @@ impl LlmExtractor {
 
     /// OpenAI-compatible Chat Completions body: a strict json_schema `response_format`.
     fn openai_body(&self, user_content: &str) -> String {
+        // No token cap: `max_tokens` is rejected by OpenAI reasoning models (which want
+        // `max_completion_tokens`), while `max_completion_tokens` isn't universally
+        // supported by OpenAI-compatible servers (llama.cpp/Grok). The json_schema
+        // `response_format` bounds the output structurally; the server default caps length.
         serde_json::json!({
             "model": self.config.model,
-            "max_tokens": 2048,
             "messages": [
                 { "role": "system", "content": SYSTEM_PROMPT },
                 { "role": "user", "content": user_content },
@@ -237,6 +243,23 @@ fn providers_config_path() -> Option<std::path::PathBuf> {
         return Some(std::path::PathBuf::from(p));
     }
     dirs::config_dir().map(|d| d.join("diver").join("providers.json"))
+}
+
+/// Read the providers config, if any. A missing file falls back (returns `None`); a
+/// real read error on an existing/explicit path surfaces rather than silently falling
+/// back to a different provider.
+fn read_providers_config() -> Result<Option<String>> {
+    let Some(path) = providers_config_path() else {
+        return Ok(None);
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(Some(contents)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(anyhow::Error::new(e).context(format!(
+            "failed to read providers config {}",
+            path.display()
+        ))),
+    }
 }
 
 /// Resolve a [`ProviderConfig`] from an optional providers-config document, an optional
@@ -341,8 +364,10 @@ struct OpenAiChoice {
 
 #[derive(Debug, Deserialize)]
 struct OpenAiMessage {
+    // `Option` so a present-but-null content (a refusal, or a tool-only/empty
+    // completion) deserializes to `None` rather than failing the whole envelope.
     #[serde(default)]
-    content: String,
+    content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -388,8 +413,10 @@ fn parse_openai_claims(response_body: &str) -> Result<Vec<ClaimJson>> {
         .choices
         .into_iter()
         .next()
-        .map(|c| c.message.content)
-        .context("chat completions response had no choices")?;
+        .context("chat completions response had no choices")?
+        .message
+        .content
+        .context("chat completions message had no text content (a refusal or empty completion?)")?;
     let parsed: ClaimsInput = serde_json::from_str(content.trim())
         .context("message content was not the structured claims JSON")?;
     Ok(parsed.claims)
@@ -573,6 +600,27 @@ mod tests {
         .unwrap();
         assert_eq!(blank.model, "claude-opus-5");
         assert_eq!(blank.base_url, "https://api.anthropic.com");
+    }
+
+    #[test]
+    fn test_parse_openai_claims_errors() {
+        // No choices at all.
+        assert!(parse_openai_claims(r#"{"choices":[]}"#).is_err());
+        // A present-but-null content (a refusal / empty completion) → clean Err, no panic.
+        assert!(
+            parse_openai_claims(r#"{"choices":[{"message":{"role":"assistant","content":null}}]}"#)
+                .is_err()
+        );
+        // Content present but not the claims JSON.
+        assert!(
+            parse_openai_claims(r#"{"choices":[{"message":{"content":"not json"}}]}"#).is_err()
+        );
+        // A well-formed structured content parses to the claims.
+        let ok = parse_openai_claims(
+            r#"{"choices":[{"message":{"content":"{\"claims\":[{\"claim\":\"c\",\"quote\":\"q\"}]}"}}]}"#,
+        )
+        .unwrap();
+        assert_eq!(ok.len(), 1);
     }
 
     const PROVIDERS_JSON: &str = r#"{
