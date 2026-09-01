@@ -3,6 +3,7 @@ pub mod client;
 pub mod display;
 pub mod extract;
 pub mod fact;
+pub mod graph;
 pub mod id;
 pub mod model;
 pub mod observation;

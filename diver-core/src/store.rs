@@ -528,6 +528,40 @@ impl Store {
             .context("failed to collect support quotes")?;
         Ok(quotes)
     }
+
+    /// Papers whose persisted assertion claims contain `concept`
+    /// (case-insensitive). Returns `(arxiv_id, claim)` per matching assertion,
+    /// ordered by paper then insertion; empty when none match. Seeds `diver dive`.
+    pub fn papers_asserting(&self, concept: &str) -> Result<Vec<(String, String)>> {
+        // Escape LIKE metacharacters (backslash first) so the concept is matched
+        // literally rather than as a wildcard pattern; `ESCAPE '\'` below tells
+        // SQLite the escape character.
+        let escaped = concept
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT p.arxiv_id, a.claim
+                 FROM assertions a
+                 JOIN papers p ON p.id = a.paper_id
+                 WHERE a.claim LIKE '%' || ?1 || '%' ESCAPE '\\'
+                 ORDER BY p.arxiv_id, a.id",
+            )
+            .context("failed to prepare papers_asserting query")?;
+        let rows = stmt
+            .query_map(rusqlite::params![escaped], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .context("failed to execute papers_asserting query")?;
+
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row.context("failed to read asserting row")?);
+        }
+        Ok(result)
+    }
 }
 
 fn row_to_fact(row: &rusqlite::Row<'_>) -> rusqlite::Result<SourceFact> {
@@ -750,6 +784,63 @@ mod tests {
             .save(&test_fact("2301.00001", "v1", "T", "2026-08-31T00:00:00Z"))
             .unwrap();
         assert!(store.get_assertions("2301.00001").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_papers_asserting_matches() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v1",
+                &[
+                    supported(
+                        "Attention improves accuracy.",
+                        &["attention improves accuracy"],
+                    ),
+                    supported("Recurrence limits speed.", &["recurrence limits speed"]),
+                ],
+            )
+            .unwrap();
+
+        // Case-insensitive substring match on the claim.
+        let hits = store.papers_asserting("ATTENTION").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].0, "2301.00001");
+        assert_eq!(hits[0].1, "Attention improves accuracy.");
+
+        // A concept in no claim yields nothing.
+        assert!(store.papers_asserting("teleportation").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_papers_asserting_empty() {
+        let store = Store::open_in_memory().unwrap();
+        assert!(store.papers_asserting("anything").unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_papers_asserting_escapes_like_wildcards() {
+        let store = Store::open_in_memory().unwrap();
+        store
+            .save_assertions(
+                "2301.00001",
+                "v1",
+                &[
+                    supported("Uses a 50% train split.", &["fifty percent"]),
+                    supported("Uses a 5040 sample split.", &["five thousand"]),
+                ],
+            )
+            .unwrap();
+
+        // "50%" must match the literal "50%" claim only. Unescaped, the `%` would be
+        // a wildcard and also match "5040" (any claim containing "50").
+        let hits = store.papers_asserting("50%").unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].1, "Uses a 50% train split.");
+
+        // A lone `_` must not act as a single-char wildcard either.
+        assert!(store.papers_asserting("50_").unwrap().is_empty());
     }
 
     fn test_fact(id: &str, version: &str, title: &str, ingested_at: &str) -> SourceFact {

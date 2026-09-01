@@ -251,3 +251,21 @@
 - **Completed:** 2026-08-31
 - **Touched:** diver-core/src/store.rs, diver-core/src/display.rs
 - **Commit:** `d186c0f4c6aeb02943cd2680e05ee8596b0a9444`
+
+## T-1101 — (sprint 11)
+- **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/graph.rs, diver-core/src/lib.rs
+- **Commit:** `4d72f22ace4513f86c617264e626d3348372f735`
+
+## T-1102 — (sprint 11)
+- **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-core/src/store.rs
+- **Commit:** `c0642193b87c7b0c6171eb1fe23363ea657447b6`
+
+## T-1103 — (sprint 11)
+- **Intent:** [INT-0012](../intents/INT-0012-graph-dive.md)
+- **Completed:** 2026-09-01
+- **Touched:** diver-cli/src/main.rs, diver-core/src/display.rs, README.md, diver-core/tests/dive_graph.rs
+- **Commit:** `a61b14a000294856050ae1a7fb391a2e956f3143`
