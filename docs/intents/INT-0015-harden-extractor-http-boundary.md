@@ -6,8 +6,8 @@
 - **Work evidence:** [Sprint 14 build plan](../sprints/s14/sprint-plans/build-plan.md) (T-1401, T-1402, T-1403)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/extract.rs](../../diver-core/src/extract.rs), [diver-core/Cargo.toml](../../diver-core/Cargo.toml)
-- **Test evidence:** (pending — `diver-core/tests/extract_http.rs`)
-- **Documentation evidence:** (pending)
+- **Test evidence:** [Sprint 14 test report](../sprints/s14/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (`ANTHROPIC_BASE_URL`)
 
 ## Intent
 
