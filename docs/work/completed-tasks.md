@@ -274,4 +274,4 @@
 - **Intent:** [INT-0013](../intents/INT-0013-coassertion-relations.md)
 - **Completed:** 2026-09-01
 - **Touched:** diver-core/src/graph.rs, diver-core/src/display.rs
-- **Commit:** PENDING
+- **Commit:** `f26070e221258944f2ac5174a7a0594035a8585e`
