@@ -340,4 +340,4 @@
 - **Intent:** [INT-0016](../intents/INT-0016-structured-claim-extraction.md)
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md (module doc already updated in T-1501)
-- **Commit:** PENDING
+- **Commit:** `ddaaf30d281e0744c78873f32f102269cd7819e1`
