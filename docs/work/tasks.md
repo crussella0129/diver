@@ -6,6 +6,5 @@
 (T-1420 subsumed by INT-0016 / this sprint.)
 - [ ] T-1510 (backlog) [intent: INT-0016]: add a function-calling `tools` fallback for OpenAI-compatible targets that lack `response_format` json_schema (the direct `parse_openai_claims` error test was completed in the s15 review fixes) — touches: diver-core/src/extract.rs
 - [ ] T-1611 (backlog) [intent: INT-0017]: add a `DIVER_DB` store-path override to `Store::open()` so corpora/tests/front-ends can use a scratch DB instead of the fixed `dirs::data_dir()/diver/diver.db` — touches: diver-core/src/store.rs
-- [ ] T-1702 (sprint 17) [intent: INT-0018]: docs — README note that co-assertion links by distinctive shared terms (common-word stoplist) — touches: README.md
 
 (T-1610 subsumed by INT-0018 / this sprint.)
