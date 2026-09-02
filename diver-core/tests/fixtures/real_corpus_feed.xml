@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"
+      xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <title>ArXiv Query: id_list=attention-nmt-corpus</title>
+  <id>http://arxiv.org/api/query</id>
+  <opensearch:totalResults>7</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <opensearch:itemsPerPage>7</opensearch:itemsPerPage>
+  <entry>
+    <id>http://arxiv.org/abs/1706.03762v7</id>
+    <updated>2023-08-02T00:41:18Z</updated>
+    <published>2017-06-12T17:57:34Z</published>
+    <title>Attention Is All You Need</title>
+    <summary>The dominant sequence transduction models are based on complex recurrent or convolutional neural networks in an encoder-decoder configuration. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving over the existing best results, including ensembles by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.</summary>
+    <author><name>Ashish Vaswani</name></author>
+    <author><name>Noam Shazeer</name></author>
+    <author><name>Niki Parmar</name></author>
+    <author><name>Jakob Uszkoreit</name></author>
+    <author><name>Llion Jones</name></author>
+    <author><name>Aidan N. Gomez</name></author>
+    <author><name>Lukasz Kaiser</name></author>
+    <author><name>Illia Polosukhin</name></author>
+    <link href="http://arxiv.org/abs/1706.03762v7" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1706.03762v7" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1909.07342v1</id>
+    <updated>2019-09-16T17:22:25Z</updated>
+    <published>2019-09-16T17:22:25Z</published>
+    <title>Multilingual Neural Machine Translation for Zero-Resource Languages</title>
+    <summary>In recent years, Neural Machine Translation (NMT) has been shown to be more effective than phrase-based statistical methods, thus quickly becoming the state of the art in machine translation (MT). However, NMT systems are limited in translating low-resourced languages, due to the significant amount of parallel data that is required to learn useful mappings between languages. In this work, we show how the so-called multilingual NMT can help to tackle the challenges associated with low-resourced language translation. The underlying principle of multilingual NMT is to force the creation of hidden representations of words in a shared semantic space across multiple languages, thus enabling a positive parameter transfer across languages. Along this direction, we present multilingual translation experiments with three languages (English, Italian, Romanian) covering six translation directions, utilizing both recurrent neural networks and transformer (or self-attentive) neural networks. We then focus on the zero-shot translation problem, that is how to leverage multi-lingual data in order to learn translation directions that are not covered by the available training material. To this aim, we introduce our recently proposed iterative self-training method, which incrementally improves a multilingual NMT on a zero-shot direction by just relying on monolingual data. Our results on TED talks data show that multilingual NMT outperforms conventional bilingual NMT, that the transformer NMT outperforms recurrent NMT, and that zero-shot NMT outperforms conventional pivoting methods and even matches the performance of a fully-trained bilingual system.</summary>
+    <author><name>Surafel M. Lakew</name></author>
+    <author><name>Marcello Federico</name></author>
+    <author><name>Matteo Negri</name></author>
+    <author><name>Marco Turchi</name></author>
+    <link href="http://arxiv.org/abs/1909.07342v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1909.07342v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2411.12502v4</id>
+    <updated>2026-04-17T12:18:58Z</updated>
+    <published>2024-11-19T13:40:49Z</published>
+    <title>Transformer Neural Processes - Kernel Regression</title>
+    <summary>Neural Processes (NPs) are a rapidly evolving class of models designed to directly model the posterior predictive distribution of stochastic processes. Originally developed as a scalable alternative to Gaussian Processes (GPs), which are limited by $O(n^3)$ runtime complexity, the most accurate modern NPs can often rival GPs but still suffer from an $O(n^2)$ bottleneck due to their attention mechanism. We introduce the Transformer Neural Process - Kernel Regression (TNP-KR), a scalable NP featuring: (1) a Kernel Regression Block (KRBlock), a simple, extensible, and parameter efficient transformer block with complexity $O(n_c^2 + n_c n_t)$, where $n_c$ and $n_t$ are the number of context and test points, respectively; (2) a kernel-based attention bias; and (3) two novel attention mechanisms: scan attention (SA), a memory-efficient scan-based attention that when paired with a kernel-based bias can make TNP-KR translation invariant, and deep kernel attention (DKA), a Performer-style attention that implicitly incoporates a distance bias and further reduces complexity to $O(n_c)$. These enhancements enable both TNP-KR variants to perform inference with 100K context points on over 1M test points in under a minute on a single 24GB GPU. On benchmarks spanning meta regression, Bayesian optimization, image completion, and epidemiology, TNP-KR with DKA outperforms its Performer counterpart on nearly every benchmark, while TNP-KR with SA achieves state-of-the-art results.</summary>
+    <author><name>Daniel Jenson</name></author>
+    <author><name>Jhonathan Navott</name></author>
+    <author><name>Mengyan Zhang</name></author>
+    <author><name>Makkunda Sharma</name></author>
+    <author><name>Elizaveta Semenova</name></author>
+    <author><name>Seth Flaxman</name></author>
+    <link href="http://arxiv.org/abs/2411.12502v4" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2411.12502v4" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="stat.ML" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1809.00252v2</id>
+    <updated>2018-09-13T08:34:40Z</updated>
+    <published>2018-09-01T21:12:09Z</published>
+    <title>Parameter Sharing Methods for Multilingual Self-Attentional Translation Models</title>
+    <summary>In multilingual neural machine translation, it has been shown that sharing a single translation model between multiple languages can achieve competitive performance, sometimes even leading to performance gains over bilingually trained models. However, these improvements are not uniform; often multilingual parameter sharing results in a decrease in accuracy due to translation models not being able to accommodate different languages in their limited parameter space. In this work, we examine parameter sharing techniques that strike a happy medium between full sharing and individual training, specifically focusing on the self-attentional Transformer model. We find that the full parameter sharing approach leads to increases in BLEU scores mainly when the target languages are from a similar language family. However, even in the case where target languages are from different families where full parameter sharing leads to a noticeable drop in BLEU scores, our proposed methods for partial sharing of parameters can lead to substantial improvements in translation accuracy.</summary>
+    <author><name>Devendra Singh Sachan</name></author>
+    <author><name>Graham Neubig</name></author>
+    <link href="http://arxiv.org/abs/1809.00252v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1809.00252v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1810.12427v1</id>
+    <updated>2018-10-29T21:58:13Z</updated>
+    <published>2018-10-29T21:58:13Z</published>
+    <title>Parallel Attention Mechanisms in Neural Machine Translation</title>
+    <summary>Recent papers in neural machine translation have proposed the strict use of attention mechanisms over previous standards such as recurrent and convolutional neural networks (RNNs and CNNs). We propose that by running traditionally stacked encoding branches from encoder-decoder attention- focused architectures in parallel, that even more sequential operations can be removed from the model and thereby decrease training time. In particular, we modify the recently published attention-based architecture called Transformer by Google, by replacing sequential attention modules with parallel ones, reducing the amount of training time and substantially improving BLEU scores at the same time. Experiments over the English to German and English to French translation tasks show that our model establishes a new state of the art.</summary>
+    <author><name>Julian Richard Medina</name></author>
+    <author><name>Jugal Kalita</name></author>
+    <link href="http://arxiv.org/abs/1810.12427v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1810.12427v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1807.11605v1</id>
+    <updated>2018-07-30T23:13:55Z</updated>
+    <published>2018-07-30T23:13:55Z</published>
+    <title>Doubly Attentive Transformer Machine Translation</title>
+    <summary>In this paper a doubly attentive transformer machine translation model (DATNMT) is presented in which a doubly-attentive transformer decoder normally joins spatial visual features obtained via pretrained convolutional neural networks, conquering any gap between image captioning and translation. In this framework, the transformer decoder figures out how to take care of source-language words and parts of an image freely by methods for two separate attention components in an Enhanced Multi-Head Attention Layer of doubly attentive transformer, as it generates words in the target language. We find that the proposed model can effectively exploit not just the scarce multimodal machine translation data, but also large general-domain text-only machine translation corpora, or image-text image captioning corpora. The experimental results show that the proposed doubly-attentive transformer-decoder performs better than a single-decoder transformer model, and gives the state-of-the-art results in the English-German multimodal machine translation task.</summary>
+    <author><name>Hasan Sait Arslan</name></author>
+    <author><name>Mark Fishel</name></author>
+    <author><name>Gholamreza Anbarjafari</name></author>
+    <link href="http://arxiv.org/abs/1807.11605v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1807.11605v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2002.10260v3</id>
+    <updated>2020-10-05T16:10:31Z</updated>
+    <published>2020-02-24T13:53:06Z</published>
+    <title>Fixed Encoder Self-Attention Patterns in Transformer-Based Machine Translation</title>
+    <summary>Transformer-based models have brought a radical change to neural machine translation. A key feature of the Transformer architecture is the so-called multi-head attention mechanism, which allows the model to focus simultaneously on different parts of the input. However, recent works have shown that most attention heads learn simple, and often redundant, positional patterns. In this paper, we propose to replace all but one attention head of each encoder layer with simple fixed -- non-learnable -- attentive patterns that are solely based on position and do not require any external knowledge. Our experiments with different data sizes and multiple language pairs show that fixing the attention heads on the encoder side of the Transformer at training time does not impact the translation quality and even increases BLEU scores by up to 3 points in low-resource scenarios.</summary>
+    <author><name>Alessandro Raganato</name></author>
+    <author><name>Yves Scherrer</name></author>
+    <author><name>Jörg Tiedemann</name></author>
+    <link href="http://arxiv.org/abs/2002.10260v3" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2002.10260v3" rel="related" type="application/pdf"/>
+    <arxiv:primary_category xmlns:arxiv="http://arxiv.org/schemas/atom" term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+  </entry>
+</feed>

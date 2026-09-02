@@ -347,3 +347,9 @@
 - **Completed:** 2026-09-02
 - **Touched:** diver-cli/src/main.rs, docs/intents/INT-0017-real-corpus-validation.md, docs/intents/README.md
 - **Commit:** `67514897da6785c13212d0e3b221943fe823b3a8`
+
+## T-1602 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-core/tests/fixtures/real_corpus_feed.xml (7 real attention/NMT papers), diver-core/tests/real_corpus.rs
+- **Commit:** PENDING
