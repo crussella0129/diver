@@ -2,9 +2,9 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0017
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 16 build plan](../sprints/s16/sprint-plans/build-plan.md) (T-1601, T-1602, T-1603)
-- **Completion evidence:** (pending)
+- **Completion evidence:** [T-1601/T-1602/T-1603 completion](../work/completed-tasks.md#t-1601--sprint-16)
 - **Code evidence:** [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
 - **Test evidence:** [Sprint 16 test report](../sprints/s16/sprint-tests/test-report.md)
 - **Documentation evidence:** [README.md](../../README.md) (corpus workflow: collect → extract --all → dive)
@@ -80,3 +80,9 @@ persisting a corpus.
 - 2026-09-02: `proposed` → `planned`; linked to Sprint 16 build plan (T-1601 `extract --all`,
   T-1602 real-feed fixture + offline E2E, T-1603 docs + backlog).
 - 2026-09-02: `planned` → `active` (Sprint 16 build started; T-1601 first).
+- 2026-09-02: `active` → `realized` (Sprint 16: `diver extract --all` batch mode + a committed
+  7-paper real arXiv feed fixture + offline `test_real_corpus_dive` proving ingest → deterministic
+  extract → weighted dive graph on real content (structural + weighted co-assertion edges) +
+  corpus-workflow docs. 130 tests pass, clippy 0. The live research probe additionally confirmed
+  the on-network flow. Deferred: co-assertion noise (T-1610), `DIVER_DB` override (T-1611),
+  populated-DB CLI E2E — see test critique).
