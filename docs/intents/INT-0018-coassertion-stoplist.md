@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0018
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 17 build plan](../sprints/s17/sprint-plans/build-plan.md) (T-1701, T-1702)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs)
@@ -75,3 +75,4 @@ directly validated by real data.
 ## Transition history
 - 2026-09-02: created as `proposed` (after a probe over the real 13-paper corpus quantified the noise).
 - 2026-09-02: `proposed` → `planned`; linked to Sprint 17 build plan (T-1701 stoplist + significant_terms + tests, T-1702 docs).
+- 2026-09-02: `planned` → `active` (Sprint 17 build started; T-1701 first).

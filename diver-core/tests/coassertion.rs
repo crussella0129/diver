@@ -85,9 +85,10 @@ fn test_coassertion_pipeline() {
     }));
 }
 
-/// A 4-paper corpus where "attention" is rare (df 2, weight 1.0) and "models" is
+/// A 4-paper corpus where "attention" is rare (df 2, weight 1.0) and "networks" is
 /// corpus-ubiquitous (df 4, weight 0.0). Low temperature keeps only the rare edge;
-/// high temperature admits the common one too.
+/// high temperature admits the common one too. (Both are non-stopwords; a generic word
+/// like "models" would be dropped by the co-assertion stoplist, INT-0018.)
 #[test]
 fn test_coassertion_temperature_pipeline() {
     let store = Store::open_in_memory().unwrap();
@@ -100,10 +101,10 @@ fn test_coassertion_temperature_pipeline() {
         store.save(&fact(id, "Paper", cat, author)).unwrap();
     }
     for (id, claim) in [
-        ("2301.00001", "attention drives models"),
-        ("2302.00002", "attention shapes models"),
-        ("2303.00003", "recurrence bounds models"),
-        ("2304.00004", "convolution stacks models"),
+        ("2301.00001", "attention drives networks"),
+        ("2302.00002", "attention shapes networks"),
+        ("2303.00003", "recurrence bounds networks"),
+        ("2304.00004", "convolution stacks networks"),
     ] {
         store
             .save_assertions(id, "v1", &[supported(id, claim)])
@@ -112,7 +113,7 @@ fn test_coassertion_temperature_pipeline() {
     let corpus = store.all_claims().unwrap();
 
     // Low temperature: only the distinctive term "attention" (df 2) links, and only
-    // the one pair that shares it. The ubiquitous "models" (df 4) is filtered out.
+    // the one pair that shares it. The ubiquitous "networks" (df 4) is filtered out.
     let cold = compute_coassertion_relations(&corpus, 0.0);
     assert_eq!(cold.len(), 1, "only the rare-term edge survives t=0.0");
     assert_eq!(cold[0].from, "2301.00001");
@@ -126,7 +127,7 @@ fn test_coassertion_temperature_pipeline() {
     }
 
     // High temperature admits the common term, so strictly more edges appear,
-    // including "models" edges the low-temperature run dropped.
+    // including "networks" edges the low-temperature run dropped.
     let hot = compute_coassertion_relations(&corpus, 1.0);
     assert!(
         hot.len() > cold.len(),
@@ -135,7 +136,7 @@ fn test_coassertion_temperature_pipeline() {
     assert!(
         hot.iter().any(|r| matches!(
             &r.kind,
-            RelationKind::CoAssertion { term, .. } if term == "models"
+            RelationKind::CoAssertion { term, .. } if term == "networks"
         )),
         "the ubiquitous term links papers only at high temperature"
     );
