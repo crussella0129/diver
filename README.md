@@ -118,6 +118,11 @@ diver extract --all --deterministic      # extract every ingested paper (offline
 diver dive attention                     # explore the weighted knowledge graph
 ```
 
+The arXiv client is rate-limited to **one request every 3 seconds** (arXiv's requested
+politeness), so repeated `collect`/`ingest` calls automatically space themselves and won't
+trip arXiv's `429` throttle. `dive`, `extract --deterministic`, and the other local commands
+make no network calls at all.
+
 ## Database compatibility
 
 > **Warning:** If you have a `diver.db` created before Sprint 5, you must delete it before running the new binary. The schema changed from a single `source_facts` table to `papers` + `paper_versions`. The binary will recreate the schema automatically on first run.

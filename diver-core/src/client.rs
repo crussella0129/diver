@@ -1,3 +1,6 @@
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
 use anyhow::{Context, Result, bail};
 use reqwest::Client;
 
@@ -7,8 +10,17 @@ use crate::query::QueryBuilder;
 
 const ARXIV_API_BASE: &str = "https://export.arxiv.org/api/query";
 
+/// Minimum spacing between arXiv API requests. arXiv asks callers to make no more than
+/// one request every three seconds; the client enforces this so any multi-request flow
+/// (`collect`, repeated `ingest`, future batch harvesting) stays polite and avoids the
+/// HTTP 429 rate-limit block.
+const MIN_REQUEST_INTERVAL: Duration = Duration::from_secs(3);
+
 pub struct ArxivClient {
     http: Client,
+    /// When the last request was allotted, for rate limiting. `Instant` isn't `Send`-shared
+    /// without a lock; a `Mutex` keeps concurrent callers correctly spaced.
+    last_request: Mutex<Option<Instant>>,
 }
 
 impl ArxivClient {
@@ -19,12 +31,31 @@ impl ArxivClient {
             .build()
             .context("failed to build HTTP client")?;
 
-        Ok(Self { http })
+        Ok(Self {
+            http,
+            last_request: Mutex::new(None),
+        })
+    }
+
+    /// Wait, if necessary, so this request is at least [`MIN_REQUEST_INTERVAL`] after the
+    /// previous one. Reserves the slot before releasing the lock so concurrent callers queue.
+    async fn throttle(&self) {
+        let wait = {
+            let mut last = self.last_request.lock().unwrap();
+            let now = Instant::now();
+            let wait = throttle_wait(*last, now, MIN_REQUEST_INTERVAL);
+            *last = Some(now + wait);
+            wait
+        };
+        if !wait.is_zero() {
+            tokio::time::sleep(wait).await;
+        }
     }
 
     pub async fn search(&self, query: &QueryBuilder) -> Result<FeedResult> {
         let url = query.build();
 
+        self.throttle().await;
         let response = self
             .http
             .get(&url)
@@ -48,6 +79,7 @@ impl ArxivClient {
     pub async fn fetch_by_id(&self, arxiv_id: &str) -> Result<(Paper, String)> {
         let url = format!("{ARXIV_API_BASE}?id_list={arxiv_id}&max_results=1");
 
+        self.throttle().await;
         let response = self
             .http
             .get(&url)
@@ -71,6 +103,15 @@ impl ArxivClient {
     }
 }
 
+/// How long to wait before the next request so it is at least `min` after `last`.
+/// Pure (no clock/sleep) for testability.
+fn throttle_wait(last: Option<Instant>, now: Instant, min: Duration) -> Duration {
+    match last {
+        Some(prev) => min.saturating_sub(now.saturating_duration_since(prev)),
+        None => Duration::ZERO,
+    }
+}
+
 pub fn extract_paper(feed: FeedResult) -> Result<Paper> {
     if feed.papers.is_empty() {
         bail!("paper not found on ArXiv");
@@ -88,6 +129,24 @@ pub fn extract_paper(feed: FeedResult) -> Result<Paper> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_throttle_wait() {
+        let now = Instant::now();
+        let min = Duration::from_secs(3);
+        // No prior request → fire immediately.
+        assert_eq!(throttle_wait(None, now, min), Duration::ZERO);
+        // 1s since the last request → wait the remaining 2s.
+        assert_eq!(
+            throttle_wait(Some(now - Duration::from_secs(1)), now, min),
+            Duration::from_secs(2)
+        );
+        // Already past the interval → no wait.
+        assert_eq!(
+            throttle_wait(Some(now - Duration::from_secs(5)), now, min),
+            Duration::ZERO
+        );
+    }
 
     #[test]
     fn test_extract_paper_valid() {
