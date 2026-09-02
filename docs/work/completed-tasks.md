@@ -353,3 +353,9 @@
 - **Completed:** 2026-09-02
 - **Touched:** diver-core/tests/fixtures/real_corpus_feed.xml (7 real attention/NMT papers), diver-core/tests/real_corpus.rs
 - **Commit:** `47e9c526b6a292739708eaf8d94222f10d0218a8`
+
+## T-1603 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** README.md, docs/work/tasks.md (corpus workflow + T-1610/T-1611 backlog)
+- **Commit:** PENDING

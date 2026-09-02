@@ -106,6 +106,18 @@ reads them back without re-running extraction. Only validated assertions are
 stored: `Store::save_assertions` accepts a `&[Assertion<Supported>]`, so the
 database can only ever hold claims that passed the validation gate.
 
+### Building a corpus
+
+`diver extract --all` extracts every stored paper, so building a real dive corpus is
+`collect` → `extract --all` → `dive`. With `--deterministic` it needs no API key or
+network for the extraction step:
+
+```sh
+diver collect "attention transformer neural machine translation" --max-results 6
+diver extract --all --deterministic      # extract every ingested paper (offline)
+diver dive attention                     # explore the weighted knowledge graph
+```
+
 ## Database compatibility
 
 > **Warning:** If you have a `diver.db` created before Sprint 5, you must delete it before running the new binary. The schema changed from a single `source_facts` table to `papers` + `paper_versions`. The binary will recreate the schema automatically on first run.
