@@ -376,7 +376,7 @@
 - **Intent:** [INT-0019](../intents/INT-0019-configurable-store-path.md)
 - **Completed:** 2026-09-02
 - **Touched:** diver-core/src/store.rs (pure `resolve_db_path(override, data_dir)` + `Store::open_at(path)`; `open()` delegates through `DIVER_DB`; `create_dir_all` moved out of resolution into `open_at`), diver-core/Cargo.toml (tempfile dev-dependency), Cargo.lock, docs/intents/INT-0019-configurable-store-path.md, docs/intents/README.md
-- **Test-Phase correction:** the call-site expression was extracted into `current_db_path()` so `test_default_db_path_matches_legacy` asserts the composition `open()` evaluates rather than re-deriving it (test-critic C-001). Verified by fault injection. Commit `PENDING-CORRECTION`.
+- **Test-Phase correction:** the call-site expression was extracted into `current_db_path()` so `test_default_db_path_matches_legacy` asserts the composition `open()` evaluates rather than re-deriving it (test-critic C-001). Verified by fault injection. Commit `f651bb6d9353dda127bbfcfc223300ccf719225a`.
 - **Commit:** `309551d0046110fb5f36ba8f13142785ff85ae8c`
 
 ## T-1802 — (sprint 18)

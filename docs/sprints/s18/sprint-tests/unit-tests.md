@@ -1,6 +1,6 @@
 # Sprint 18 Unit Tests
 
-- **Tested head:** `48c5fb873208ed3219910e1894ac937b69835a97`
+- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
 - **Runner:** `cargo test --workspace` + `cargo clippy --workspace --all-targets -- -D warnings` + `cargo fmt --check`
 - **Result:** `diver_core` lib — **129 passed; 0 failed** (+8 new); `diver-cli` bin — 1. Clippy: 0. fmt: clean.
 
@@ -18,26 +18,38 @@ parameters — exists to make these testable without `std::env::set_var`, which 
 - `test_resolve_db_path_no_data_dir`: `resolve_db_path(None, None)` → `.diver/diver.db`.
   Covers the fallback branch that was unreachable from any test before the data
   directory became a parameter. **pass** (AC1; EARS clause 2)
-- `test_default_db_path_matches_legacy`: `current_db_path()` — the function `Store::open()`
-  itself calls — equals the pre-change default expression, written out inline in the test.
-  Skips when `DIVER_DB` is set in the test environment, since the default branch is then not
-  the one `open()` would take.
+- `test_default_db_path_matches_legacy`: `current_db_path_for(None)` equals the pre-change
+  default expression, written out inline in the test. Runs unconditionally.
 
-  **Strengthened during the Test Phase** (a correction to T-1801, in response to test-critic C-001). As first written it asserted
-  `resolve_db_path(None, dirs::data_dir())`, re-deriving the call-site argument rather than
-  reading it — so it constrained only the helper, duplicating `test_resolve_db_path_default`,
-  while three artifacts claimed it pinned the composition. The test critic (C-001) caught
-  the overclaim. The call-site expression was extracted into `current_db_path()`, which both
-  `open()` and the test now call.
+  **Scope, stated precisely** (test-critic C-102). This pins `current_db_path_for`, which
+  holds the path *composition*. `Store::open()` reaches it through two delegating lines —
+  `open_at(current_db_path())` and `current_db_path_for(var_os(DB_PATH_ENV))` — and neither
+  line is directly asserted by any test. Those lines contain no path composition, and
+  testing them directly would mean calling `Store::open()` with `DIVER_DB` unset, which
+  would write to the developer's real corpus. So this is a deliberate, bounded gap, not a
+  claim of full call-path coverage.
 
-  **Verified by fault injection rather than inspection:** temporarily changing the call site
-  to `resolve_db_path(var_os(DB_PATH_ENV), dirs::data_dir().map(|d| d.join("diver")))` — the
-  exact silent double-join the plan named as this sprint's one dangerous refactor error —
-  makes the test fail with `left: "…\AppData\Roaming\diver\diver\diver.db"` vs
-  `right: "…\AppData\Roaming\diver\diver.db"`. The fault was then reverted and the suite
-  re-run green. (The pre-fix test would not have caught that injection — it never evaluated
-  the call site — but that is reasoning about the old code, not an observed run.) **pass**
-  (AC1; EARS clause 6)
+  **Strengthened twice during the Test Phase** (corrections to T-1801). As first written it
+  asserted `resolve_db_path(None, dirs::data_dir())`, re-deriving the call-site argument
+  rather than reading it — constraining only the helper, duplicating
+  `test_resolve_db_path_default`, while three artifacts claimed it pinned the composition
+  (C-001). The composition was extracted into a named function. That fix initially carried a
+  `if DIVER_DB is set { return }` guard, which C-101 correctly flagged as a test that
+  self-disables precisely in the environment this sprint teaches developers to create — a
+  silent no-op, with no `#[ignore]` and no output. The environment read was therefore split
+  out into `current_db_path()`, leaving `current_db_path_for(override)` pure in its
+  arguments, so the test needs no guard at all. The `var_os` read is covered by the CLI
+  tests instead.
+
+  **Verified by fault injection rather than inspection**, twice — once against the original
+  extraction and again against the unconditional form. Changing `current_db_path_for` to
+  `resolve_db_path(override_value, dirs::data_dir().map(|d| d.join("diver")))` — the exact
+  silent double-join the plan named as this sprint's one dangerous refactor error — fails
+  the test with `left: "…\AppData\Roaming\diver\diver\diver.db"` vs
+  `right: "…\AppData\Roaming\diver\diver.db"`. The fault was reverted and the suite re-run
+  green (142) both times. (The pre-fix test would not have caught that injection — it never
+  evaluated the call site — but that is reasoning about the old code, not an observed run.)
+  **pass** (AC1; EARS clause 6)
 - `test_resolve_db_path_override`: a non-empty override returns exactly the given path
   and the data-directory argument is not consulted. **pass** (AC2; EARS clause 3)
 - `test_resolve_db_path_empty_override`: `Some("")` → the platform default, **not** the
@@ -51,7 +63,11 @@ parameters — exists to make these testable without `std::env::set_var`, which 
 - `test_open_at_creates_parent_dirs`: `open_at` on a nested nonexistent path creates the
   file, and `list()` returns `Ok`, proving `init_schema` ran. **pass** (AC3; EARS clause 7)
 - `test_open_at_round_trip_persists`: save a `SourceFact` + `Assertion<Supported>` through
-  `open_at(p)`, drop the store, reopen → same paper and same claim. **pass** (AC4; EARS clause 8)
+  `open_at(p)`, drop the store, reopen → same paper, same claim, **same version, and same
+  support quotes**. The version and support assertions were added during the Test Phase
+  (test-critic C-104): without them a corpus that came back with its `assertion_support`
+  rows dropped would still have passed, and AC4 is the criterion INT-0022 depends on.
+  **pass** (AC4; EARS clause 8)
 
 ## Regression scope — what the pre-existing suite does and does not prove
 

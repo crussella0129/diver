@@ -1,6 +1,6 @@
 # Sprint 18 End-to-End Tests
 
-- **Tested head:** `48c5fb873208ed3219910e1894ac937b69835a97`
+- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
 - **Status:** **possible** for this sprint's deliverable (the `DIVER_DB` override);
   still **not-yet-possible** for evaluation-quality corpus scoring.
 - **Location:** `diver-cli/tests/db_override.rs` (new)
@@ -32,9 +32,17 @@ This is the **real regression signal for the entire override**: had `open()` ign
 never have appeared. It also exercises `open_at`'s parent-directory creation through the
 shipped binary rather than through a library call.
 
-### `test_cli_diver_db_override_leaves_default_db_unmodified` — **pass**
+### `test_cli_diver_db_override_leaves_default_db_unmodified` — **pass (vacuous on this run)**
 Same invocation, additionally asserting that the platform default database was not
 *created* when it did not already exist. Skips when `dirs::data_dir()` is `None`.
+
+**On the tested head this assertion did not execute.** `%APPDATA%\diver\diver.db` already
+exists on this machine (it predates the run), so `existed_before` was true and the guarded
+branch was skipped — the only thing asserted was that the process exited successfully,
+which makes the test a strict subset of `test_cli_diver_db_override_creates_db_at_path`
+here. Recorded explicitly because the test critic (C-103) was right that a bare "pass"
+cannot be distinguished from "the guard ran and held." The guard carries signal only on a
+clean machine or in CI; it is not part of this sprint's evidence for AC2.
 
 ### Deviation from the locked test plan — deliberate
 

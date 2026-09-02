@@ -38,17 +38,28 @@ pub fn resolve_db_path(override_value: Option<OsString>, data_dir: Option<PathBu
     }
 }
 
-/// The corpus path [`Store::open`] will use, given the current environment.
+/// The corpus path for an explicit override value, against the platform data
+/// directory.
 ///
-/// This exists as a named function rather than an inline expression inside
-/// `open()` so that a test can assert the *composition* — the arguments actually
-/// handed to [`resolve_db_path`] — and not merely re-derive them. Testing the
-/// helper alone would miss the one silent refactor error available here: folding
-/// the `join("diver")` into this call site as well as into the helper yields
-/// `<data_dir>/diver/diver/diver.db`, relocating every existing corpus while a
-/// helper-only test still passes.
+/// This carries the composition — the arguments actually handed to
+/// [`resolve_db_path`] — as a named function rather than an inline expression, so
+/// a test can pin it. Testing the helper alone would miss the one silent refactor
+/// error available here: folding the `join("diver")` into this call site as well
+/// as into the helper yields `<data_dir>/diver/diver/diver.db`, relocating every
+/// existing corpus while a helper-only test still passes.
+///
+/// The environment read is deliberately *not* part of this function. Keeping it
+/// out means the default-path test needs no `DIVER_DB`-is-unset guard, and so
+/// cannot silently degrade into a no-op in the very environment this feature
+/// teaches people to create. The `var_os` read is covered instead by the CLI
+/// tests in `diver-cli/tests/db_override.rs`.
+pub fn current_db_path_for(override_value: Option<OsString>) -> PathBuf {
+    resolve_db_path(override_value, dirs::data_dir())
+}
+
+/// The corpus path [`Store::open`] will use, given the current environment.
 pub fn current_db_path() -> PathBuf {
-    resolve_db_path(std::env::var_os(DB_PATH_ENV), dirs::data_dir())
+    current_db_path_for(std::env::var_os(DB_PATH_ENV))
 }
 
 #[derive(Debug, Clone)]
@@ -761,17 +772,17 @@ mod tests {
         // into the call site as well as the helper would yield
         // `<data>/diver/diver/diver.db` — silently relocating every existing user's
         // corpus — with the whole suite still green.
-        if std::env::var_os(DB_PATH_ENV).is_some() {
-            // DIVER_DB is set in this environment, so the default branch is not the
-            // one `open()` would take; asserting it would be meaningless.
-            return;
-        }
-
+        //
+        // Unconditional by design: `current_db_path_for` takes the override as a
+        // parameter, so this needs no "skip when DIVER_DB is set" guard and cannot
+        // quietly become a no-op in the very environment this feature teaches
+        // developers to create. `current_db_path()`'s `var_os` read is covered by
+        // the CLI tests instead.
         let legacy = dirs::data_dir()
             .map(|d| d.join("diver"))
             .unwrap_or_else(|| PathBuf::from(".diver"))
             .join("diver.db");
-        assert_eq!(current_db_path(), legacy);
+        assert_eq!(current_db_path_for(None), legacy);
     }
 
     #[test]
@@ -862,6 +873,14 @@ mod tests {
         assert_eq!(
             assertions[0].claim,
             "Attention improves translation accuracy."
+        );
+        // The support quotes and version must survive the reopen too: the EARS
+        // clause promises "the same assertions", and a corpus that came back with
+        // its `assertion_support` rows dropped would otherwise still pass.
+        assert_eq!(assertions[0].version, "v1");
+        assert_eq!(
+            assertions[0].support,
+            vec!["attention improves translation accuracy".to_string()]
         );
     }
 
