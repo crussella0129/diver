@@ -388,5 +388,5 @@
 - **Intent:** [INT-0019](../intents/INT-0019-configurable-store-path.md)
 - **Completed:** 2026-09-02
 - **Touched:** README.md (new `### Corpus location (DIVER_DB)` under "Building a corpus", where the other env-var configuration lives — not the pre-Sprint-5 `## Database compatibility` migration warning)
-- **Commit:** PENDING
+- **Commit:** `95fad05d9ae211ae9fc7acd74fc9d9117efaeef7`
 
