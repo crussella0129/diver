@@ -126,6 +126,28 @@ politeness), so repeated `collect`/`ingest` calls automatically space themselves
 trip arXiv's `429` throttle. `dive`, `extract --deterministic`, and the other local commands
 make no network calls at all.
 
+### Corpus location (`DIVER_DB`)
+
+By default the corpus lives at the platform data directory — `~/.local/share/diver/diver.db`
+on Linux, `%APPDATA%\diver\diver.db` on Windows. Set **`DIVER_DB`** to keep a corpus
+somewhere else, which is how you build a scratch or fixture corpus without disturbing your
+main one:
+
+```sh
+DIVER_DB=/tmp/scratch/diver.db diver collect "denoising diffusion" --max-results 5
+DIVER_DB=/tmp/scratch/diver.db diver extract --all --deterministic
+DIVER_DB=/tmp/scratch/diver.db diver dive diffusion
+```
+
+Missing parent directories are created. An **unset or empty** `DIVER_DB` selects the
+default — `DIVER_DB=` is deliberately treated as unset, because SQLite reads an empty
+filename as a private temporary database that would be discarded on exit.
+
+> **Warning:** `DIVER_DB` silently redirects the corpus. A stray value left exported in
+> your shell will make `list`, `find`, and `dive` look empty — the papers are not lost,
+> you are simply pointed at a different database. Check the variable before concluding a
+> corpus has disappeared.
+
 ## Database compatibility
 
 > **Warning:** If you have a `diver.db` created before Sprint 5, you must delete it before running the new binary. The schema changed from a single `source_facts` table to `papers` + `paper_versions`. The binary will recreate the schema automatically on first run.

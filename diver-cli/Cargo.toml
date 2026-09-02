@@ -14,3 +14,10 @@ diver-core = { path = "../diver-core" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[dev-dependencies]
+# `dirs` is pinned to the same major as diver-core's so the test resolves the
+# same platform directory the binary does; it is not re-exported from diver-core,
+# so it is not reachable transitively.
+dirs = "6"
+tempfile = "3"

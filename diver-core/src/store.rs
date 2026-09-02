@@ -1,9 +1,66 @@
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use rusqlite::Connection;
 
 use crate::assertion::{Assertion, Supported};
 use crate::fact::SourceFact;
+
+/// Environment variable that overrides the corpus location.
+pub const DB_PATH_ENV: &str = "DIVER_DB";
+
+/// Choose the corpus path from an override value and the platform data directory.
+///
+/// `override_value` is the raw `DIVER_DB` value (or `None` when unset), and
+/// `data_dir` is the platform data directory (or `None` when unavailable). A
+/// non-empty override wins outright; otherwise the default is
+/// `<data_dir>/diver/diver.db`, falling back to `.diver/diver.db`.
+///
+/// A **set-but-empty** override is treated as unset: `std::env::var_os` yields
+/// `Some("")` for `DIVER_DB=`, and SQLite reads an empty filename as a private
+/// temporary database that is discarded on close — so honoring it literally would
+/// silently hand every command a throwaway corpus.
+///
+/// This function is pure. It performs no I/O and reads no environment, which is
+/// what makes every branch — including the no-data-directory fallback — testable
+/// without mutating process environment. Directory creation belongs to
+/// [`Store::open_at`], so resolving a path never touches the platform data
+/// directory that an override was meant to bypass.
+pub fn resolve_db_path(override_value: Option<OsString>, data_dir: Option<PathBuf>) -> PathBuf {
+    match override_value.filter(|value| !value.is_empty()) {
+        Some(value) => PathBuf::from(value),
+        None => data_dir
+            .map(|dir| dir.join("diver"))
+            .unwrap_or_else(|| PathBuf::from(".diver"))
+            .join("diver.db"),
+    }
+}
+
+/// The corpus path for an explicit override value, against the platform data
+/// directory.
+///
+/// This carries the composition — the arguments actually handed to
+/// [`resolve_db_path`] — as a named function rather than an inline expression, so
+/// a test can pin it. Testing the helper alone would miss the one silent refactor
+/// error available here: folding the `join("diver")` into this call site as well
+/// as into the helper yields `<data_dir>/diver/diver/diver.db`, relocating every
+/// existing corpus while a helper-only test still passes.
+///
+/// The environment read is deliberately *not* part of this function. Keeping it
+/// out means the default-path test needs no `DIVER_DB`-is-unset guard, and so
+/// cannot silently degrade into a no-op in the very environment this feature
+/// teaches people to create. The `var_os` read is covered instead by the CLI
+/// tests in `diver-cli/tests/db_override.rs`.
+pub fn current_db_path_for(override_value: Option<OsString>) -> PathBuf {
+    resolve_db_path(override_value, dirs::data_dir())
+}
+
+/// The corpus path [`Store::open`] will use, given the current environment.
+pub fn current_db_path() -> PathBuf {
+    current_db_path_for(std::env::var_os(DB_PATH_ENV))
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -29,17 +86,27 @@ pub struct Store {
 }
 
 impl Store {
+    /// Open the corpus at the path [`current_db_path`] selects: `DIVER_DB` when
+    /// that variable holds a non-empty value, otherwise the platform default.
     pub fn open() -> Result<Self> {
-        let data_dir = dirs::data_dir()
-            .map(|d| d.join("diver"))
-            .unwrap_or_else(|| std::path::PathBuf::from(".diver"));
+        Self::open_at(current_db_path())
+    }
 
-        std::fs::create_dir_all(&data_dir)
-            .with_context(|| format!("failed to create data directory: {}", data_dir.display()))?;
+    /// Open (creating if absent) the corpus stored at `path`, creating any missing
+    /// parent directories and initializing the schema. This carries the real work
+    /// behind [`Store::open`]; tests and corpus tooling call it directly rather
+    /// than mutating process environment.
+    pub fn open_at(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
 
-        let db_path = data_dir.join("diver.db");
-        let conn = Connection::open(&db_path)
-            .with_context(|| format!("failed to open database: {}", db_path.display()))?;
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("failed to create data directory: {}", parent.display())
+            })?;
+        }
+
+        let conn = Connection::open(path)
+            .with_context(|| format!("failed to open database: {}", path.display()))?;
 
         let store = Self { conn };
         store.init_schema()?;
@@ -674,6 +741,147 @@ mod tests {
 
     fn count(store: &Store, sql: &str) -> i64 {
         store.conn.query_row(sql, [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn test_resolve_db_path_default() {
+        let resolved = resolve_db_path(None, Some(PathBuf::from("/data")));
+        assert_eq!(
+            resolved,
+            PathBuf::from("/data").join("diver").join("diver.db")
+        );
+    }
+
+    #[test]
+    fn test_resolve_db_path_no_data_dir() {
+        // The fallback branch, unreachable from a test before the data directory
+        // became a parameter (`dirs::data_dir()` cannot be stubbed without env
+        // mutation).
+        let resolved = resolve_db_path(None, None);
+        assert_eq!(resolved, PathBuf::from(".diver").join("diver.db"));
+    }
+
+    #[test]
+    fn test_default_db_path_matches_legacy() {
+        // Pins the *composition* `open()` performs, not just the helper, by calling
+        // the same `current_db_path()` that `open()` calls. Nothing else in the
+        // suite reaches it: `Store::open()` has no caller outside
+        // `diver-cli/src/main.rs`, every other test uses `open_in_memory()` or
+        // `open_at()`, and both CLI tests always set DIVER_DB, so none of them ever
+        // exercises the default branch. Without this, folding the `join("diver")`
+        // into the call site as well as the helper would yield
+        // `<data>/diver/diver/diver.db` — silently relocating every existing user's
+        // corpus — with the whole suite still green.
+        //
+        // Unconditional by design: `current_db_path_for` takes the override as a
+        // parameter, so this needs no "skip when DIVER_DB is set" guard and cannot
+        // quietly become a no-op in the very environment this feature teaches
+        // developers to create. `current_db_path()`'s `var_os` read is covered by
+        // the CLI tests instead.
+        let legacy = dirs::data_dir()
+            .map(|d| d.join("diver"))
+            .unwrap_or_else(|| PathBuf::from(".diver"))
+            .join("diver.db");
+        assert_eq!(current_db_path_for(None), legacy);
+    }
+
+    #[test]
+    fn test_resolve_db_path_override() {
+        let target = PathBuf::from("/scratch/nonexistent/corpus.db");
+        let resolved = resolve_db_path(Some(OsString::from(&target)), Some(PathBuf::from("/data")));
+        // The override wins outright, and the data directory is not consulted.
+        assert_eq!(resolved, target);
+    }
+
+    #[test]
+    fn test_resolve_db_path_empty_override() {
+        // `std::env::var_os` yields `Some("")` for `DIVER_DB=`, and SQLite reads an
+        // empty filename as a private temporary database discarded on close. Treat
+        // it as unset rather than handing the caller a throwaway corpus.
+        let resolved = resolve_db_path(Some(OsString::new()), Some(PathBuf::from("/data")));
+        assert_eq!(
+            resolved,
+            PathBuf::from("/data").join("diver").join("diver.db")
+        );
+    }
+
+    #[test]
+    fn test_resolve_db_path_is_side_effect_free() {
+        let scratch = tempfile::tempdir().unwrap();
+        let absent = scratch.path().join("never-created");
+
+        let resolved = resolve_db_path(None, Some(absent.clone()));
+
+        assert_eq!(resolved, absent.join("diver").join("diver.db"));
+        assert!(
+            !absent.exists(),
+            "resolving a path must not create any directory"
+        );
+    }
+
+    #[test]
+    fn test_open_at_creates_parent_dirs() {
+        let scratch = tempfile::tempdir().unwrap();
+        let db_path = scratch
+            .path()
+            .join("nested")
+            .join("deeper")
+            .join("corpus.db");
+
+        let store = Store::open_at(&db_path).unwrap();
+
+        assert!(db_path.exists(), "open_at creates the database file");
+        // A schema-dependent query proves `init_schema` ran.
+        assert!(store.list().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_open_at_round_trip_persists() {
+        let scratch = tempfile::tempdir().unwrap();
+        let db_path = scratch.path().join("corpus").join("diver.db");
+        let fact = test_fact(
+            "2301.00001",
+            "v1",
+            "Attention Is All You Need",
+            "2026-09-02",
+        );
+
+        {
+            let store = Store::open_at(&db_path).unwrap();
+            store.save(&fact).unwrap();
+            store
+                .save_assertions(
+                    "2301.00001",
+                    "v1",
+                    &[supported(
+                        "Attention improves translation accuracy.",
+                        &["attention improves translation accuracy"],
+                    )],
+                )
+                .unwrap();
+        } // store dropped: the connection closes and the process boundary is crossed.
+
+        let reopened = Store::open_at(&db_path).unwrap();
+        let got = reopened
+            .get("2301.00001")
+            .unwrap()
+            .expect("paper persisted");
+        assert_eq!(got.title, "Attention Is All You Need");
+
+        let assertions = reopened.get_assertions("2301.00001").unwrap();
+        assert_eq!(assertions.len(), 1);
+        assert_eq!(
+            assertions[0].claim,
+            "Attention improves translation accuracy."
+        );
+        // The support quotes and version must survive the reopen too: the EARS
+        // clause promises "the same assertions", and a corpus that came back with
+        // its `assertion_support` rows dropped would otherwise still pass.
+        assert_eq!(assertions[0].version, "v1");
+        assert_eq!(
+            assertions[0].support,
+            vec!["attention improves translation accuracy".to_string()]
+        );
     }
 
     #[test]
