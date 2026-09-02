@@ -18,6 +18,7 @@
   - [INT-0015 Harden the LLM extractor's HTTP boundary](intents/INT-0015-harden-extractor-http-boundary.md)
   - [INT-0016 Agent-agnostic structured claim extraction](intents/INT-0016-structured-claim-extraction.md)
   - [INT-0017 Persist and validate a real dive corpus](intents/INT-0017-real-corpus-validation.md)
+  - [INT-0018 Reduce co-assertion noise with a common-word stoplist](intents/INT-0018-coassertion-stoplist.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)
@@ -37,3 +38,4 @@
 - [Sprint 14](sprints/s14/sprint-meta.md)
 - [Sprint 15](sprints/s15/sprint-meta.md)
 - [Sprint 16](sprints/s16/sprint-meta.md)
+- [Sprint 17](sprints/s17/sprint-meta.md)

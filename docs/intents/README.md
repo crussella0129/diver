@@ -23,3 +23,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0015](INT-0015-harden-extractor-http-boundary.md) | Harden the LLM extractor's HTTP boundary | realized |
 | [INT-0016](INT-0016-structured-claim-extraction.md) | Agent-agnostic structured claim extraction | realized |
 | [INT-0017](INT-0017-real-corpus-validation.md) | Persist and validate a real dive corpus | realized |
+| [INT-0018](INT-0018-coassertion-stoplist.md) | Reduce co-assertion noise with a common-word stoplist | planned |
