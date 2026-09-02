@@ -358,4 +358,4 @@
 - **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
 - **Completed:** 2026-09-02
 - **Touched:** README.md, docs/work/tasks.md (corpus workflow + T-1610/T-1611 backlog)
-- **Commit:** PENDING
+- **Commit:** `22229597f8d6541edd739a0b5c94e6a1beaca9ac`
