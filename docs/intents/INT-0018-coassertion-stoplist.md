@@ -2,9 +2,9 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0018
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 17 build plan](../sprints/s17/sprint-plans/build-plan.md) (T-1701, T-1702)
-- **Completion evidence:** (pending)
+- **Completion evidence:** [T-1701/T-1702 completion](../work/completed-tasks.md#t-1701--sprint-17)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs)
 - **Test evidence:** [Sprint 17 test report](../sprints/s17/sprint-tests/test-report.md)
 - **Documentation evidence:** [README.md](../../README.md) (co-assertion links by distinctive terms)
@@ -76,3 +76,8 @@ directly validated by real data.
 - 2026-09-02: created as `proposed` (after a probe over the real 13-paper corpus quantified the noise).
 - 2026-09-02: `proposed` → `planned`; linked to Sprint 17 build plan (T-1701 stoplist + significant_terms + tests, T-1702 docs).
 - 2026-09-02: `planned` → `active` (Sprint 17 build started; T-1701 first).
+- 2026-09-02: `active` → `realized` (Sprint 17: `stopwords.txt` common-word stoplist +
+  `LazyLock<HashSet>` `significant_terms`; on the real 13-paper corpus the terms shared by ≥2
+  papers dropped 189→92 and flipped from filler-dominated to technical-dominated
+  (`encoder`/`decoder`/`bleu` vs the old `eight`/`https`/`literature`). 132 tests pass, clippy 0.
+  Deferred: phrase/bigram co-assertion for hyphenated fragments — see test critique C-003).

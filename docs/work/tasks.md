@@ -8,3 +8,4 @@
 - [ ] T-1611 (backlog) [intent: INT-0017]: add a `DIVER_DB` store-path override to `Store::open()` so corpora/tests/front-ends can use a scratch DB instead of the fixed `dirs::data_dir()/diver/diver.db` — touches: diver-core/src/store.rs
 
 (T-1610 subsumed by INT-0018 / this sprint.)
+- [ ] T-1710 (backlog) [intent: INT-0018]: phrase/bigram co-assertion — link papers on shared distinctive 2-word phrases (`machine translation`, `denoising diffusion`), which also handles hyphenated fragments (`multi`/`self` from `multi-head`/`self-attention`) more cleanly than the word stoplist — touches: diver-core/src/graph.rs
