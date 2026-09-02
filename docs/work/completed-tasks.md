@@ -341,3 +341,9 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md (module doc already updated in T-1501)
 - **Commit:** `ddaaf30d281e0744c78873f32f102269cd7819e1`
+
+## T-1601 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-cli/src/main.rs, docs/intents/INT-0017-real-corpus-validation.md, docs/intents/README.md
+- **Commit:** PENDING

@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0017
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 16 build plan](../sprints/s16/sprint-plans/build-plan.md) (T-1601, T-1602, T-1603)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
@@ -79,3 +79,4 @@ persisting a corpus.
 - 2026-09-02: created as `proposed` (after a live pipeline probe on real arXiv papers).
 - 2026-09-02: `proposed` → `planned`; linked to Sprint 16 build plan (T-1601 `extract --all`,
   T-1602 real-feed fixture + offline E2E, T-1603 docs + backlog).
+- 2026-09-02: `planned` → `active` (Sprint 16 build started; T-1601 first).

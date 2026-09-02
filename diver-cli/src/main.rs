@@ -48,12 +48,17 @@ enum Commands {
 
     /// Extract supported assertions from a stored paper's abstract
     Extract {
-        /// ArXiv paper ID (e.g., 2301.00001)
-        arxiv_id: String,
+        /// ArXiv paper ID (e.g., 2301.00001) — omit when using --all
+        #[arg(required_unless_present = "all")]
+        arxiv_id: Option<String>,
 
         /// Use the offline sentence-splitter instead of the Claude API (no key needed)
         #[arg(long)]
         deterministic: bool,
+
+        /// Extract every stored paper instead of a single one
+        #[arg(long, conflicts_with = "arxiv_id")]
+        all: bool,
     },
 
     /// Show the assertions previously extracted and stored for a paper
@@ -170,25 +175,28 @@ async fn main() -> Result<()> {
         Commands::Extract {
             arxiv_id,
             deterministic,
+            all,
         } => {
             let store = Store::open()?;
 
-            match store.get(&arxiv_id)? {
-                Some(fact) => {
-                    let candidates = if deterministic {
-                        candidate_assertions(&extract_observations(&fact))
-                    } else {
-                        let extractor = LlmExtractor::from_env()?;
-                        extractor.extract(&fact).await?
-                    };
-                    let supported = candidates
-                        .into_iter()
-                        .filter_map(|candidate| candidate.validate().ok())
-                        .collect::<Vec<_>>();
-                    store.save_assertions(&fact.arxiv_id, &fact.arxiv_version, &supported)?;
-                    display::display_extract(&fact.arxiv_id, &supported);
+            if all {
+                let facts = store.list()?;
+                if facts.is_empty() {
+                    println!(
+                        "No stored papers to extract. Run `diver ingest <id>` or `diver collect <query>` first."
+                    );
+                } else {
+                    for fact in &facts {
+                        extract_and_save(&store, fact, deterministic).await?;
+                    }
+                    println!("\nExtracted {} paper(s).", facts.len());
                 }
-                None => bail!("Paper not found: {arxiv_id}"),
+            } else {
+                let arxiv_id = arxiv_id.expect("clap requires an arxiv_id unless --all is set");
+                match store.get(&arxiv_id)? {
+                    Some(fact) => extract_and_save(&store, &fact, deterministic).await?,
+                    None => bail!("Paper not found: {arxiv_id}"),
+                }
             }
         }
 
@@ -269,6 +277,24 @@ async fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/// Extract a single paper's supported assertions and persist them, then display them.
+/// Shared by `diver extract <id>` and `diver extract --all`.
+async fn extract_and_save(store: &Store, fact: &SourceFact, deterministic: bool) -> Result<()> {
+    let candidates = if deterministic {
+        candidate_assertions(&extract_observations(fact))
+    } else {
+        let extractor = LlmExtractor::from_env()?;
+        extractor.extract(fact).await?
+    };
+    let supported = candidates
+        .into_iter()
+        .filter_map(|candidate| candidate.validate().ok())
+        .collect::<Vec<_>>();
+    store.save_assertions(&fact.arxiv_id, &fact.arxiv_version, &supported)?;
+    display::display_extract(&fact.arxiv_id, &supported);
     Ok(())
 }
 
