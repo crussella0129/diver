@@ -364,4 +364,4 @@
 - **Intent:** [INT-0018](../intents/INT-0018-coassertion-stoplist.md)
 - **Completed:** 2026-09-02
 - **Touched:** diver-core/src/stopwords.txt (new), diver-core/src/graph.rs, diver-core/tests/coassertion.rs (fixture: models→networks), docs/intents/INT-0018-coassertion-stoplist.md, docs/intents/README.md
-- **Commit:** PENDING
+- **Commit:** `65497d43e9c326fb72d87c2360c54fbb7e822927`
