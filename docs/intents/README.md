@@ -22,3 +22,4 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0014](INT-0014-weighted-coassertion-temperature.md) | Weighted co-assertion with adjustable temperature | realized |
 | [INT-0015](INT-0015-harden-extractor-http-boundary.md) | Harden the LLM extractor's HTTP boundary | realized |
 | [INT-0016](INT-0016-structured-claim-extraction.md) | Agent-agnostic structured claim extraction | realized |
+| [INT-0017](INT-0017-real-corpus-validation.md) | Persist and validate a real dive corpus | realized |

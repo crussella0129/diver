@@ -341,3 +341,21 @@
 - **Completed:** 2026-09-01
 - **Touched:** README.md, docs/intents/INT-0009-llm-claim-extractor.md (module doc already updated in T-1501)
 - **Commit:** `ddaaf30d281e0744c78873f32f102269cd7819e1`
+
+## T-1601 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-cli/src/main.rs, docs/intents/INT-0017-real-corpus-validation.md, docs/intents/README.md
+- **Commit:** `67514897da6785c13212d0e3b221943fe823b3a8`
+
+## T-1602 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-core/tests/fixtures/real_corpus_feed.xml (7 real attention/NMT papers), diver-core/tests/real_corpus.rs
+- **Commit:** `47e9c526b6a292739708eaf8d94222f10d0218a8`
+
+## T-1603 — (sprint 16)
+- **Intent:** [INT-0017](../intents/INT-0017-real-corpus-validation.md)
+- **Completed:** 2026-09-02
+- **Touched:** README.md, docs/work/tasks.md (corpus workflow + T-1610/T-1611 backlog)
+- **Commit:** `22229597f8d6541edd739a0b5c94e6a1beaca9ac`

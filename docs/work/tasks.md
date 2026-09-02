@@ -4,4 +4,6 @@
 - [ ] T-1410 (backlog) [intent: INT-0015]: close the deferred extractor-HTTP test gaps — a `from_env` test that honors `ANTHROPIC_BASE_URL` (needs a safe env-mutation approach), and a transport test for a 2xx response with a malformed body (test critique C-001/C-002) — touches: diver-core/src/extract.rs
 
 (T-1420 subsumed by INT-0016 / this sprint.)
-- [ ] T-1510 (backlog) [intent: INT-0016]: close the deferred extractor gaps — a direct `parse_openai_claims` error unit test (no-choices / non-JSON content), and a function-calling `tools` fallback for OpenAI-compatible targets that lack `response_format` json_schema (test critique C-001/C-003) — touches: diver-core/src/extract.rs
+- [ ] T-1510 (backlog) [intent: INT-0016]: add a function-calling `tools` fallback for OpenAI-compatible targets that lack `response_format` json_schema (the direct `parse_openai_claims` error test was completed in the s15 review fixes) — touches: diver-core/src/extract.rs
+- [ ] T-1610 (backlog) [intent: INT-0014]: reduce co-assertion common-term noise observed on the real corpus (e.g. `large`/`task` scoring w=1.00 at df==2) — TF/phrase weighting or an expanded stopword set on the `significant_terms`/weighting seam — touches: diver-core/src/graph.rs
+- [ ] T-1611 (backlog) [intent: INT-0017]: add a `DIVER_DB` store-path override to `Store::open()` so corpora/tests/front-ends can use a scratch DB instead of the fixed `dirs::data_dir()/diver/diver.db` — touches: diver-core/src/store.rs
