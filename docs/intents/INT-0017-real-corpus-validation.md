@@ -6,8 +6,8 @@
 - **Work evidence:** [Sprint 16 build plan](../sprints/s16/sprint-plans/build-plan.md) (T-1601, T-1602, T-1603)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
-- **Test evidence:** (pending)
-- **Documentation evidence:** (pending)
+- **Test evidence:** [Sprint 16 test report](../sprints/s16/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (corpus workflow: collect → extract --all → dive)
 
 ## Intent
 
