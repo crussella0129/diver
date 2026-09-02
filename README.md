@@ -23,9 +23,12 @@ lists the papers each is related to via deterministic edges:
 
 - **shared category** or **shared author** (structural), and
 - **co-assertion** — the papers' stored claims share a significant term, so `dive`
-  links papers by *what they assert*, not only their metadata. Each co-assertion
-  edge is weighted by the term's inverse document frequency across the corpus
-  (rarer, more distinctive terms score higher), shown as `co-asserts <term> (w=…)`.
+  links papers by *what they assert*, not only their metadata. Only **distinctive**
+  terms count: a common-word stoplist (general English + generic research filler like
+  `model`/`results`/`method` + web tokens like `https`/`github`) is removed first, so
+  links land on real shared concepts (`encoder`, `convolutional`, `bleu`) rather than
+  filler. Each edge is then weighted by the term's inverse document frequency across the
+  corpus (rarer terms score higher), shown as `co-asserts <term> (w=…)`.
 
 ### Temperature (`--temperature`)
 

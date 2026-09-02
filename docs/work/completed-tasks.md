@@ -359,3 +359,15 @@
 - **Completed:** 2026-09-02
 - **Touched:** README.md, docs/work/tasks.md (corpus workflow + T-1610/T-1611 backlog)
 - **Commit:** `22229597f8d6541edd739a0b5c94e6a1beaca9ac`
+
+## T-1701 — (sprint 17)
+- **Intent:** [INT-0018](../intents/INT-0018-coassertion-stoplist.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-core/src/stopwords.txt (new), diver-core/src/graph.rs, diver-core/tests/coassertion.rs (fixture: models→networks), docs/intents/INT-0018-coassertion-stoplist.md, docs/intents/README.md
+- **Commit:** `65497d43e9c326fb72d87c2360c54fbb7e822927`
+
+## T-1702 — (sprint 17)
+- **Intent:** [INT-0018](../intents/INT-0018-coassertion-stoplist.md)
+- **Completed:** 2026-09-02
+- **Touched:** README.md
+- **Commit:** `ff332da59d6fdc27e60444525f59dd6751120ae9`
