@@ -371,3 +371,10 @@
 - **Completed:** 2026-09-02
 - **Touched:** README.md
 - **Commit:** `ff332da59d6fdc27e60444525f59dd6751120ae9`
+
+## T-1801 — (sprint 18)
+- **Intent:** [INT-0019](../intents/INT-0019-configurable-store-path.md)
+- **Completed:** 2026-09-02
+- **Touched:** diver-core/src/store.rs (pure `resolve_db_path(override, data_dir)` + `Store::open_at(path)`; `open()` delegates through `DIVER_DB`; `create_dir_all` moved out of resolution into `open_at`), diver-core/Cargo.toml (tempfile dev-dependency), Cargo.lock, docs/intents/INT-0019-configurable-store-path.md, docs/intents/README.md
+- **Commit:** PENDING
+

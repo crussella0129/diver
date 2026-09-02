@@ -24,3 +24,9 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0016](INT-0016-structured-claim-extraction.md) | Agent-agnostic structured claim extraction | realized |
 | [INT-0017](INT-0017-real-corpus-validation.md) | Persist and validate a real dive corpus | realized |
 | [INT-0018](INT-0018-coassertion-stoplist.md) | Reduce co-assertion noise with a common-word stoplist | realized |
+| [INT-0019](INT-0019-configurable-store-path.md) | Configurable store path for reproducible corpora | active |
+| [INT-0020](INT-0020-first-class-concepts.md) | Concepts as first-class entities | proposed |
+| [INT-0021](INT-0021-typed-epistemic-relations.md) | Typed epistemic relations between claims | proposed |
+| [INT-0022](INT-0022-relation-evaluation-harness.md) | Relation evaluation harness and gold set | proposed |
+| [INT-0023](INT-0023-full-text-evidence.md) | Full-text evidence beyond abstracts | proposed |
+| [INT-0024](INT-0024-incremental-materialization.md) | Incremental graph materialization | proposed |
