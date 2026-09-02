@@ -384,3 +384,9 @@
 - **Touched:** diver-cli/tests/db_override.rs (new; 2 subprocess tests via `Command::env` + `CARGO_BIN_EXE_diver`, no `set_var`), diver-cli/Cargo.toml (dirs = "6" pinned to diver-core's, tempfile dev-deps), Cargo.lock
 - **Commit:** `19eff312197b43b79930d495ae2891ad53a3132c`
 
+## T-1803 — (sprint 18)
+- **Intent:** [INT-0019](../intents/INT-0019-configurable-store-path.md)
+- **Completed:** 2026-09-02
+- **Touched:** README.md (new `### Corpus location (DIVER_DB)` under "Building a corpus", where the other env-var configuration lives — not the pre-Sprint-5 `## Database compatibility` migration warning)
+- **Commit:** PENDING
+

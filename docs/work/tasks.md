@@ -10,4 +10,3 @@
 (T-1610 subsumed by INT-0018 / this sprint.)
 - [ ] T-1710 (backlog) [intent: INT-0018]: phrase/bigram co-assertion — link papers on shared distinctive 2-word phrases (`machine translation`, `denoising diffusion`), which also handles hyphenated fragments (`multi`/`self` from `multi-head`/`self-attention`) more cleanly than the word stoplist — touches: diver-core/src/graph.rs
 
-- [ ] T-1803 (sprint 18) [intent: INT-0019]: document the `DIVER_DB` override — touches: README.md
