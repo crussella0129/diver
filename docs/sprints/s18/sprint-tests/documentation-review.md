@@ -1,6 +1,6 @@
 # Sprint 18 Documentation Review
 
-- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
+- **Tested head:** `79a12818bb5c09787afc8e9a2f98ee3881fd8a3c`
 - **Reviewer:** Claude Opus 5 (primary agent), Sprint 18 Test Phase, 2026-09-02
 - **Subject:** [INT-0019](../../../intents/INT-0019-configurable-store-path.md) acceptance
   criterion 5 — "The README documents `DIVER_DB`."

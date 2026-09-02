@@ -1,6 +1,6 @@
 # Sprint 18 End-to-End Tests
 
-- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
+- **Tested head:** `79a12818bb5c09787afc8e9a2f98ee3881fd8a3c`
 - **Status:** **possible** for this sprint's deliverable (the `DIVER_DB` override);
   still **not-yet-possible** for evaluation-quality corpus scoring.
 - **Location:** `diver-cli/tests/db_override.rs` (new)

@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0019
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 18 build plan](../sprints/s18/sprint-plans/build-plan.md) (T-1801, T-1802, T-1803)
-- **Completion evidence:** none
-- **Code evidence:** none
-- **Test evidence:** none
-- **Documentation evidence:** none
+- **Completion evidence:** [T-1801/T-1802/T-1803 completion](../work/completed-tasks.md#t-1801--sprint-18)
+- **Code evidence:** [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-cli/tests/db_override.rs](../../diver-cli/tests/db_override.rs)
+- **Test evidence:** [Sprint 18 test report](../sprints/s18/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (`### Corpus location (DIVER_DB)`), [documentation review](../sprints/s18/sprint-tests/documentation-review.md)
 
 ## Intent
 
@@ -87,3 +87,15 @@ rediscovered as a blocker halfway through the work that needs it.
 - 2026-09-02: `proposed` → `planned`; linked to the Sprint 18 build plan (T-1801 `resolve_db_path` + `open_at` + tests, T-1802 README).
 - 2026-09-02: plan re-scoped after plan-critic round 1 (still `planned`, no state change). `resolve_db_path` now takes the data directory as a parameter so every branch is pure and testable without env mutation, and `create_dir_all` moves into `open_at` so an override leaves the platform data directory untouched. A CLI subprocess test was added as T-1802 to cover the `DIVER_DB` env read itself, which no unit test reaches; the README task became T-1803. Round 2 additionally corrected this chapter's Rationale, which had claimed the real-corpus test shares the developer's database — it does not; it parses a checked-in fixture into an in-memory store.
 - 2026-09-02: `planned` → `active` (Sprint 18 build started; T-1801 first).
+- 2026-09-02: `active` → `realized` (Sprint 18). `DIVER_DB` overrides the corpus path;
+  `resolve_db_path(override, data_dir)` is pure and `current_db_path_for` holds the
+  composition, so every branch — including the no-data-directory fallback and a
+  set-but-empty override — is testable with no `std::env::set_var`; `create_dir_all` moved
+  into `open_at`, leaving the platform data directory untouched when an override is set.
+  All five acceptance criteria pass: AC1-AC4 by 8 hermetic unit tests plus 2 CLI subprocess
+  tests, AC5 by recorded documentation review. 142 tests pass, clippy 0, fmt clean.
+  Verified by fault injection that the default-path test actually catches the
+  `<data>/diver/diver/diver.db` double-join it guards against — the first version did not.
+  Known residual (test-critique C-102): `Store::open()` reaches the pinned composition
+  through two delegating lines no test asserts; covering them would require writing to the
+  developer's real corpus. Durable fixture corpora are now possible, unblocking INT-0022.

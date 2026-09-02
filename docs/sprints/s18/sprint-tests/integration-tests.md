@@ -1,6 +1,6 @@
 # Sprint 18 Integration Tests
 
-- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
+- **Tested head:** `79a12818bb5c09787afc8e9a2f98ee3881fd8a3c`
 - **Runner:** `cargo test --workspace`
 - **Result:** all integration binaries green; **142 tests total** across the workspace
   (132 baseline + 10 new).

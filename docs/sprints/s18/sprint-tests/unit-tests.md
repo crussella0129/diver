@@ -1,6 +1,6 @@
 # Sprint 18 Unit Tests
 
-- **Tested head:** `f651bb6d9353dda127bbfcfc223300ccf719225a`
+- **Tested head:** `79a12818bb5c09787afc8e9a2f98ee3881fd8a3c`
 - **Runner:** `cargo test --workspace` + `cargo clippy --workspace --all-targets -- -D warnings` + `cargo fmt --check`
 - **Result:** `diver_core` lib — **129 passed; 0 failed** (+8 new); `diver-cli` bin — 1. Clippy: 0. fmt: clean.
 
