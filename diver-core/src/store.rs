@@ -38,6 +38,19 @@ pub fn resolve_db_path(override_value: Option<OsString>, data_dir: Option<PathBu
     }
 }
 
+/// The corpus path [`Store::open`] will use, given the current environment.
+///
+/// This exists as a named function rather than an inline expression inside
+/// `open()` so that a test can assert the *composition* — the arguments actually
+/// handed to [`resolve_db_path`] — and not merely re-derive them. Testing the
+/// helper alone would miss the one silent refactor error available here: folding
+/// the `join("diver")` into this call site as well as into the helper yields
+/// `<data_dir>/diver/diver/diver.db`, relocating every existing corpus while a
+/// helper-only test still passes.
+pub fn current_db_path() -> PathBuf {
+    resolve_db_path(std::env::var_os(DB_PATH_ENV), dirs::data_dir())
+}
+
 #[derive(Debug, Clone)]
 pub struct SearchResult {
     pub arxiv_id: String,
@@ -62,13 +75,10 @@ pub struct Store {
 }
 
 impl Store {
-    /// Open the corpus at the path [`resolve_db_path`] selects: `DIVER_DB` when
+    /// Open the corpus at the path [`current_db_path`] selects: `DIVER_DB` when
     /// that variable holds a non-empty value, otherwise the platform default.
     pub fn open() -> Result<Self> {
-        Self::open_at(resolve_db_path(
-            std::env::var_os(DB_PATH_ENV),
-            dirs::data_dir(),
-        ))
+        Self::open_at(current_db_path())
     }
 
     /// Open (creating if absent) the corpus stored at `path`, creating any missing
@@ -742,17 +752,26 @@ mod tests {
 
     #[test]
     fn test_default_db_path_matches_legacy() {
-        // Pins the *composition* `open()` performs, not just the helper. Nothing
-        // else in the suite can: `Store::open()` has no caller outside
-        // `diver-cli/src/main.rs`, and every other test uses `open_in_memory()`.
-        // Without this, folding the `join("diver")` into both the helper and the
-        // call site would yield `<data>/diver/diver/diver.db` — silently relocating
-        // every existing user's corpus — with the whole suite still green.
+        // Pins the *composition* `open()` performs, not just the helper, by calling
+        // the same `current_db_path()` that `open()` calls. Nothing else in the
+        // suite reaches it: `Store::open()` has no caller outside
+        // `diver-cli/src/main.rs`, every other test uses `open_in_memory()` or
+        // `open_at()`, and both CLI tests always set DIVER_DB, so none of them ever
+        // exercises the default branch. Without this, folding the `join("diver")`
+        // into the call site as well as the helper would yield
+        // `<data>/diver/diver/diver.db` — silently relocating every existing user's
+        // corpus — with the whole suite still green.
+        if std::env::var_os(DB_PATH_ENV).is_some() {
+            // DIVER_DB is set in this environment, so the default branch is not the
+            // one `open()` would take; asserting it would be meaningless.
+            return;
+        }
+
         let legacy = dirs::data_dir()
             .map(|d| d.join("diver"))
             .unwrap_or_else(|| PathBuf::from(".diver"))
             .join("diver.db");
-        assert_eq!(resolve_db_path(None, dirs::data_dir()), legacy);
+        assert_eq!(current_db_path(), legacy);
     }
 
     #[test]
