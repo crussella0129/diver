@@ -6,8 +6,8 @@
 - **Work evidence:** [Sprint 17 build plan](../sprints/s17/sprint-plans/build-plan.md) (T-1701, T-1702)
 - **Completion evidence:** (pending)
 - **Code evidence:** [diver-core/src/graph.rs](../../diver-core/src/graph.rs)
-- **Test evidence:** (pending)
-- **Documentation evidence:** (pending)
+- **Test evidence:** [Sprint 17 test report](../sprints/s17/sprint-tests/test-report.md)
+- **Documentation evidence:** [README.md](../../README.md) (co-assertion links by distinctive terms)
 
 ## Intent
 
