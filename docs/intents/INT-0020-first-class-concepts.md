@@ -26,10 +26,28 @@ Give concepts identity, derived deterministically from the corpus:
   observed in claims plus corpus statistics (document frequency, distinctiveness)
   and arXiv's own vocabulary — categories, and the terminology the taxonomy
   already implies. No model is asked to invent an ontology.
-- **Surface forms map many-to-one.** `attention`, `attentional`, and
-  `attention mechanism` should be able to resolve to one concept, with every
-  surface form retained and inspectable. Multi-word forms are included here,
-  which subsumes the deferred bigram work (T-1710) rather than doing it twice.
+- **Surface forms map many-to-one — for inflection only.** `network` and
+  `networks`, or `diffusion model` and `diffusion models`, are one concept, with
+  every observed surface form retained and inspectable. A phrase is its own
+  concept, *linked to* its constituent words rather than merged into them:
+  `attention mechanism` is not `attention`, and treating it as such would be a
+  broader/narrower judgement disguised as identity. Derivational variants
+  (`attention` / `attentional`) stay distinct until a later layer can propose such
+  merges for deterministic confirmation. *(Revised in Sprint 19 research; see
+  Transition history.)*
+- **Phrases form from adjacent words by a category rule.** The stoplist splits into
+  common words, which break a phrase, and research filler, which may be a phrase's
+  *head* but never its modifier — so `language model` and `attention mechanism`
+  form while `model establishes` does not. A phrase becomes a concept only when at
+  least two papers share it, since recurrence is the deterministic evidence that a
+  word pair is a unit and not a coincidence. Two-word phrases only for now. This
+  subsumes the deferred bigram work (T-1710) rather than doing it twice.
+- **Concepts are materialized and never stale.** Formation runs over the whole
+  stored corpus and persists its result. Because any claim write — and any change
+  to the formation rules — can change the concept set, a fingerprint of the stored
+  claims plus a formation-version constant is checked on read, and a mismatch
+  triggers a full, deterministic rebuild. This is a full rebuild on change, not the
+  incremental maintenance [[incremental-materialization]] (INT-0024) defers.
 - **Co-assertion re-keys onto concepts.** `RelationKind::CoAssertion` carries a
   concept, not a token. IDF weighting and the `--temperature` dial
   ([[weighted-coassertion-temperature]], INT-0014) keep their semantics and
@@ -49,9 +67,12 @@ Non-goals:
 1. A persisted `Concept` has a stable id, a canonical label, and one or more
    observed surface forms; claims link to concepts rather than being matched by
    substring at query time.
-2. `diver dive <term>` resolves the term to a concept (or reports that it does
-   not resolve), and a paper using a different surface form of that concept
-   appears in the neighborhood — something the current substring match cannot do.
+2. `diver dive <term>` resolves the term to a concept, and a paper using a
+   different surface form of that concept appears in the neighborhood — something
+   the current substring match cannot do (on the real corpus, `dive networks`
+   misses the papers that only say `network`). When the term does not resolve, it
+   says so and names the concepts that contain the term as a word, so a stoplisted
+   query like `model` points at `diffusion model` rather than returning nothing.
 3. Concept formation is deterministic: the same corpus produces the same concept
    set, byte-for-byte, across runs.
 4. Multi-word concepts are representable, and `machine translation` is a distinct
@@ -60,6 +81,9 @@ Non-goals:
    still hold.
 6. Every concept is traceable to the claims and papers whose surface forms formed
    it.
+7. Concepts are never stale: after any change to the stored claims, or to the
+   formation rules' version, the next read reflects the new concept set without a
+   manual rebuild step. *(Added in Sprint 19 research.)*
 
 ## Rationale
 
@@ -80,6 +104,16 @@ problems. Corpus statistics, morphological variants, and arXiv's taxonomy get a
 long way without a model in the loop, which preserves the property that makes
 Diver interesting: its skeleton was not hallucinated.
 
+Sprint 19 measured the problem on the real 13-paper corpus
+([probe](../sprints/s19/sprint-research/probe-output.txt)). Substring resolution is
+wrong in both directions. It over-matches: `model` hits 46 claims though only 18
+contain the word, `net` hits 12 though only 1 does, and `gan` hits two claims, both
+via `organized`. It also under-matches: `networks` cannot find the papers that say
+only `network`. The same probe showed that plural folding plus the category rule
+for phrases recovers `diffusion model`, `attention mechanism`, and `bleu score` —
+which the unmodified stoplist would have destroyed — with no false merge observed
+across 26 folds.
+
 ## Alternatives
 
 - **Typed relations first** (the review's ordering) — recorded above; rejected as
@@ -96,6 +130,21 @@ Diver interesting: its skeleton was not hallucinated.
 - **Keep lexical matching and widen the stoplist** — rejected: [[coassertion-stoplist]]
   already showed the ceiling of that approach. It removes noise; it cannot create
   identity.
+- **Snowball / Porter stemming** (the `rust-stemmers` crate exists) — rejected. It
+  would merge `attention`/`attentional`, but it strips suffixes without regard to
+  meaning, and Porter-family stemmers are known to put unrelated words on one stem.
+  A wrong merge is invisible in aggregate output, which is the failure this chapter
+  most needs to avoid. Plural folding covered every variant the probe found. *(Not
+  measured on this corpus; no stemmer was run.)*
+- **Merging a phrase into its head word** (`attention mechanism` → `attention`) —
+  rejected. It is a broader/narrower judgement, not identity. Linking the two keeps
+  the relation visible without asserting they are the same thing.
+- **Part-of-speech tagging to find noun phrases** — rejected for now: it needs a
+  model or a sizeable dependency, and the frequency-plus-category rule recovered
+  the important phrases on real data.
+- **Three-word phrases** — deferred. They would absorb bigram fragments such as
+  `neural machine` (from *neural machine translation*), at the cost of more
+  combinatorial noise.
 
 ## Consequences
 
@@ -110,6 +159,18 @@ Diver interesting: its skeleton was not hallucinated.
   axis. Those become tractable follow-ons once this and INT-0021 exist.
 - Concept formation is a new place to be wrong, and wrong merges are invisible
   in aggregate output. Traceability (criterion 6) is the non-negotiable guard.
+- **Recall changes as well as precision.** Resolution by concept drops substring's
+  accidental derivational matches — `dive attention` no longer reaches
+  `attentional` (1 claim on the real corpus). Accepted: it is the same mechanism
+  that stops `gan` matching `organized`.
+- **Stoplisted words stop resolving on their own.** `model` is filler, so it forms
+  no concept; criterion 2's suggestions are what keep that from being a dead end.
+- `stopwords.txt` splits into two files, making the phrase-breaking category
+  explicit instead of inferred from word order.
+- Two-word phrases leave fragments (`neural machine`, `convolutional neural`), and a
+  little boilerplate survives (`project page`); both are recorded, not chased —
+  tuning against 13 papers would overfit.
 
 ## Transition history
 - 2026-09-02: created as `proposed` during Sprint 18 roadmap realignment, in response to the external review; ordering deliberately inverted relative to that review's recommendation, with reasoning recorded above.
+- 2026-09-21: revised during Sprint 19 research, still `proposed` (no state change). A read-only probe of the real corpus showed that (a) "many-to-one" must mean inflection only — merging `attention mechanism` into `attention` would disguise a broader/narrower judgement as identity; (b) the unmodified stoplist destroys key phrases, so it must split into phrase-breaking and head-eligible categories; (c) materialized concepts need a freshness guarantee. Intent, criterion 2 (suggestions for unresolved terms), new criterion 7 (freshness), Rationale, Alternatives, and Consequences updated accordingly.
