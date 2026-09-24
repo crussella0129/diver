@@ -425,4 +425,4 @@
 - **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
 - **Completed:** 2026-09-24
 - **Touched:** README.md (dive section rewritten: concepts — words with plural folding, shared two-word phrases linked narrower/broader, filler never alone, unresolved suggestions, no substring matching and the attention/attentional change; edges incl. phrase subsumption; --temperature 1.0 restated; no remaining 'every shared term' text).
-- **Commit:** PENDING
+- **Commit:** `b54a126ae5b7da12f257567c1ec2cbb74b42a439`
