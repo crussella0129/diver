@@ -1,12 +1,51 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::assertion::{Assertion, Supported};
+use crate::concept::{
+    CONCEPT_FORMATION_VERSION, ConceptKind, form_concepts, query_key, rules_digest,
+};
 use crate::fact::SourceFact;
+
+/// `meta` key holding the fingerprint persisted concepts were built from.
+const CONCEPT_FINGERPRINT_KEY: &str = "concept_fingerprint";
+
+/// Most concepts any related/suggestion list returns.
+pub const CONCEPT_LIST_CAP: usize = 10;
+
+/// A persisted concept, resolved from a query.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConceptInfo {
+    pub id: String,
+    pub label: String,
+    pub kind: ConceptKind,
+    pub paper_count: usize,
+    /// Observed surface forms with occurrence counts, most frequent first.
+    pub forms: Vec<(String, usize)>,
+}
+
+/// A concept's identity and reach, for related-concept and suggestion lists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConceptSummary {
+    pub id: String,
+    pub label: String,
+    pub kind: ConceptKind,
+    pub paper_count: usize,
+}
+
+/// Order by paper count descending, then id, and keep at most [`CONCEPT_LIST_CAP`].
+fn rank_and_cap(list: &mut Vec<ConceptSummary>) {
+    list.sort_by(|a, b| b.paper_count.cmp(&a.paper_count).then(a.id.cmp(&b.id)));
+    list.truncate(CONCEPT_LIST_CAP);
+}
+
+fn parse_kind(kind: &str) -> Result<ConceptKind> {
+    ConceptKind::parse(kind).ok_or_else(|| anyhow!("unknown concept kind {kind:?} in database"))
+}
 
 /// Environment variable that overrides the corpus location.
 pub const DB_PATH_ENV: &str = "DIVER_DB";
@@ -163,6 +202,34 @@ impl Store {
                     id           INTEGER PRIMARY KEY AUTOINCREMENT,
                     assertion_id INTEGER NOT NULL REFERENCES assertions(id) ON DELETE CASCADE,
                     quote        TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS concepts (
+                    id          TEXT PRIMARY KEY,
+                    label       TEXT NOT NULL,
+                    kind        TEXT NOT NULL,
+                    paper_count INTEGER NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS concept_forms (
+                    concept_id TEXT NOT NULL REFERENCES concepts(id) ON DELETE CASCADE,
+                    form       TEXT NOT NULL,
+                    count      INTEGER NOT NULL,
+                    PRIMARY KEY (concept_id, form)
+                );
+
+                CREATE TABLE IF NOT EXISTS assertion_concepts (
+                    assertion_id INTEGER NOT NULL REFERENCES assertions(id) ON DELETE CASCADE,
+                    concept_id   TEXT NOT NULL REFERENCES concepts(id) ON DELETE CASCADE,
+                    PRIMARY KEY (assertion_id, concept_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_assertion_concepts_concept
+                    ON assertion_concepts(concept_id);
+
+                CREATE TABLE IF NOT EXISTS meta (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
                 );",
             )
             .context("failed to initialize database schema")?;
@@ -596,38 +663,311 @@ impl Store {
         Ok(quotes)
     }
 
-    /// Papers whose persisted assertion claims contain `concept`
-    /// (case-insensitive). Returns `(arxiv_id, claim)` per matching assertion,
-    /// ordered by paper then insertion; empty when none match. Seeds `diver dive`.
+    /// Claims asserting about `concept`: the query is resolved to a concept
+    /// ([`Store::resolve_concept`]) and that concept's linked claims are returned as
+    /// `(arxiv_id, claim)`, ordered by paper then insertion. Empty when the query
+    /// resolves to no concept. Seeds `diver dive`. There is no substring matching:
+    /// `gan` does not reach a claim that says `organized`.
     pub fn papers_asserting(&self, concept: &str) -> Result<Vec<(String, String)>> {
-        // Escape LIKE metacharacters (backslash first) so the concept is matched
-        // literally rather than as a wildcard pattern; `ESCAPE '\'` below tells
-        // SQLite the escape character.
-        let escaped = concept
-            .replace('\\', "\\\\")
-            .replace('%', "\\%")
-            .replace('_', "\\_");
+        match self.resolve_concept(concept)? {
+            Some(info) => self.claims_for_concept(&info.id),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Resolve a user query to a persisted concept: the query is normalized with
+    /// [`query_key`] (tokenize, drop common words, fold plurals) and looked up by id.
+    /// `None` when nothing matches.
+    pub fn resolve_concept(&self, query: &str) -> Result<Option<ConceptInfo>> {
+        self.ensure_concepts_fresh()?;
+        match query_key(query) {
+            Some(key) => self.concept_info(&key),
+            None => Ok(None),
+        }
+    }
+
+    /// The claims linked to concept `id`, as `(arxiv_id, claim)`, ordered by paper
+    /// then assertion id.
+    pub fn claims_for_concept(&self, id: &str) -> Result<Vec<(String, String)>> {
+        self.ensure_concepts_fresh()?;
         let mut stmt = self
             .conn
             .prepare(
                 "SELECT p.arxiv_id, a.claim
-                 FROM assertions a
+                 FROM assertion_concepts ac
+                 JOIN assertions a ON a.id = ac.assertion_id
                  JOIN papers p ON p.id = a.paper_id
-                 WHERE a.claim LIKE '%' || ?1 || '%' ESCAPE '\\'
+                 WHERE ac.concept_id = ?1
                  ORDER BY p.arxiv_id, a.id",
             )
-            .context("failed to prepare papers_asserting query")?;
+            .context("failed to prepare claims_for_concept query")?;
         let rows = stmt
-            .query_map(rusqlite::params![escaped], |row| {
-                Ok((row.get(0)?, row.get(1)?))
-            })
-            .context("failed to execute papers_asserting query")?;
+            .query_map(rusqlite::params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .context("failed to execute claims_for_concept query")?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .context("failed to read concept claim rows")
+    }
 
-        let mut result = Vec::new();
-        for row in rows {
-            result.push(row.context("failed to read asserting row")?);
+    /// Concepts linked to concept `id` without being merged into it: for a term, the
+    /// phrases containing it (narrower); for a phrase, the terms of its words
+    /// (broader). Ordered by paper count descending then id, at most
+    /// [`CONCEPT_LIST_CAP`].
+    pub fn concepts_related_to(&self, id: &str) -> Result<Vec<ConceptSummary>> {
+        self.ensure_concepts_fresh()?;
+        let words: Vec<&str> = id.split(' ').collect();
+        let mut related: Vec<ConceptSummary> = self
+            .concept_summaries()?
+            .into_iter()
+            .filter(|c| {
+                if words.len() == 1 {
+                    c.kind == ConceptKind::Phrase && c.id.split(' ').any(|w| w == id)
+                } else {
+                    c.kind == ConceptKind::Term && words.contains(&c.id.as_str())
+                }
+            })
+            .collect();
+        rank_and_cap(&mut related);
+        Ok(related)
+    }
+
+    /// Concepts to offer when `query` does not resolve: those whose id contains every
+    /// folded query token as a whole word, or, if there are none, any of them.
+    /// Ordered by paper count descending then id, at most [`CONCEPT_LIST_CAP`].
+    pub fn concept_suggestions(&self, query: &str) -> Result<Vec<ConceptSummary>> {
+        self.ensure_concepts_fresh()?;
+        let Some(key) = query_key(query) else {
+            return Ok(Vec::new());
+        };
+        let tokens: Vec<&str> = key.split(' ').collect();
+        let all = self.concept_summaries()?;
+        let has = |c: &ConceptSummary, t: &str| c.id.split(' ').any(|w| w == t);
+        let mut out: Vec<ConceptSummary> = all
+            .iter()
+            .filter(|c| c.id != key && tokens.iter().all(|t| has(c, t)))
+            .cloned()
+            .collect();
+        if out.is_empty() {
+            out = all
+                .into_iter()
+                .filter(|c| c.id != key && tokens.iter().any(|t| has(c, t)))
+                .collect();
         }
-        Ok(result)
+        rank_and_cap(&mut out);
+        Ok(out)
+    }
+
+    /// How many concepts the stored claims form (after ensuring freshness). `0` for an
+    /// empty corpus or one whose claims contain only stopwords.
+    pub fn concept_count(&self) -> Result<usize> {
+        self.ensure_concepts_fresh()?;
+        let n: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM concepts", [], |row| row.get(0))
+            .context("failed to count concepts")?;
+        Ok(n as usize)
+    }
+
+    fn concept_info(&self, id: &str) -> Result<Option<ConceptInfo>> {
+        let head: Option<(String, String, i64)> = self
+            .conn
+            .query_row(
+                "SELECT label, kind, paper_count FROM concepts WHERE id = ?1",
+                rusqlite::params![id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()
+            .context("failed to read concept")?;
+        let Some((label, kind, paper_count)) = head else {
+            return Ok(None);
+        };
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT form, count FROM concept_forms WHERE concept_id = ?1
+                 ORDER BY count DESC, form",
+            )
+            .context("failed to prepare concept forms query")?;
+        let forms = stmt
+            .query_map(rusqlite::params![id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? as usize))
+            })
+            .context("failed to execute concept forms query")?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .context("failed to read concept forms")?;
+        Ok(Some(ConceptInfo {
+            id: id.to_string(),
+            label,
+            kind: parse_kind(&kind)?,
+            paper_count: paper_count as usize,
+            forms,
+        }))
+    }
+
+    fn concept_summaries(&self) -> Result<Vec<ConceptSummary>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, label, kind, paper_count FROM concepts ORDER BY id")
+            .context("failed to prepare concept summaries query")?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .context("failed to execute concept summaries query")?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (id, label, kind, paper_count) = row.context("failed to read concept row")?;
+            out.push(ConceptSummary {
+                id,
+                label,
+                kind: parse_kind(&kind)?,
+                paper_count: paper_count as usize,
+            });
+        }
+        Ok(out)
+    }
+
+    /// The fingerprint persisted concepts must match: formation version, stoplist
+    /// digest, and the assertion count and highest assertion id. Sound because
+    /// assertions are only ever inserted or deleted (never updated) by
+    /// [`Store::save_assertions`], and `AUTOINCREMENT` never reuses an id: rows with
+    /// ids at or below the recorded max can only disappear, never reappear or change.
+    /// So an unchanged max means no row was added, and an unchanged count then means
+    /// none was removed — the claim set is identical.
+    fn concept_fingerprint(&self) -> Result<String> {
+        let (count, max_id): (i64, i64) = self
+            .conn
+            .query_row(
+                "SELECT COUNT(*), COALESCE(MAX(id), 0) FROM assertions",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .context("failed to fingerprint assertions")?;
+        Ok(format!(
+            "v{CONCEPT_FORMATION_VERSION}:{:016x}:{count}:{max_id}",
+            rules_digest()
+        ))
+    }
+
+    fn stored_concept_fingerprint(&self) -> Result<Option<String>> {
+        self.conn
+            .query_row(
+                "SELECT value FROM meta WHERE key = ?1",
+                rusqlite::params![CONCEPT_FINGERPRINT_KEY],
+                |row| row.get(0),
+            )
+            .optional()
+            .context("failed to read concept fingerprint")
+    }
+
+    /// Rebuild persisted concepts in full when the fingerprint no longer matches, so
+    /// no concept read can observe stale concepts. Takes the write lock up front and
+    /// re-checks under it, so concurrent readers rebuild at most once.
+    fn ensure_concepts_fresh(&self) -> Result<()> {
+        if self.stored_concept_fingerprint()? == Some(self.concept_fingerprint()?) {
+            return Ok(());
+        }
+        self.conn
+            .execute_batch("BEGIN IMMEDIATE;")
+            .context("failed to begin concept rebuild")?;
+        let result = (|| -> Result<()> {
+            let current = self.concept_fingerprint()?;
+            if self.stored_concept_fingerprint()?.as_deref() == Some(current.as_str()) {
+                return Ok(());
+            }
+            self.rebuild_concepts()?;
+            self.conn
+                .execute(
+                    "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    rusqlite::params![CONCEPT_FINGERPRINT_KEY, current],
+                )
+                .context("failed to store concept fingerprint")?;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => {
+                self.conn
+                    .execute_batch("COMMIT;")
+                    .context("failed to commit concept rebuild")?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK;");
+                Err(e)
+            }
+        }
+    }
+
+    /// Replace every persisted concept with a fresh [`form_concepts`] over all stored
+    /// claims. Runs inside the caller's transaction.
+    fn rebuild_concepts(&self) -> Result<()> {
+        self.conn
+            .execute_batch(
+                "DELETE FROM assertion_concepts;
+                 DELETE FROM concept_forms;
+                 DELETE FROM concepts;",
+            )
+            .context("failed to clear concepts")?;
+
+        let rows: Vec<(i64, String, String)> = {
+            let mut stmt = self
+                .conn
+                .prepare(
+                    "SELECT a.id, p.arxiv_id, a.claim
+                     FROM assertions a
+                     JOIN papers p ON p.id = a.paper_id
+                     ORDER BY p.arxiv_id, a.id",
+                )
+                .context("failed to prepare concept source query")?;
+            stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                .context("failed to read concept source claims")?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .context("failed to collect concept source claims")?
+        };
+        let claims: Vec<(String, String)> = rows
+            .iter()
+            .map(|(_, paper, claim)| (paper.clone(), claim.clone()))
+            .collect();
+        let set = form_concepts(&claims);
+
+        let mut insert_concept = self
+            .conn
+            .prepare("INSERT INTO concepts (id, label, kind, paper_count) VALUES (?1, ?2, ?3, ?4)")
+            .context("failed to prepare concept insert")?;
+        let mut insert_form = self
+            .conn
+            .prepare("INSERT INTO concept_forms (concept_id, form, count) VALUES (?1, ?2, ?3)")
+            .context("failed to prepare concept form insert")?;
+        let mut insert_link = self
+            .conn
+            .prepare("INSERT INTO assertion_concepts (assertion_id, concept_id) VALUES (?1, ?2)")
+            .context("failed to prepare concept link insert")?;
+        for concept in set.iter() {
+            insert_concept
+                .execute(rusqlite::params![
+                    concept.id,
+                    concept.label,
+                    concept.kind.as_str(),
+                    concept.papers.len() as i64
+                ])
+                .context("failed to insert concept")?;
+            for (form, count) in &concept.forms {
+                insert_form
+                    .execute(rusqlite::params![concept.id, form, *count as i64])
+                    .context("failed to insert concept form")?;
+            }
+            for &idx in &concept.claims {
+                insert_link
+                    .execute(rusqlite::params![rows[idx].0, concept.id])
+                    .context("failed to insert concept link")?;
+            }
+        }
+        Ok(())
     }
 
     /// Every persisted assertion as `(arxiv_id, claim)`, ordered by paper then
@@ -1051,7 +1391,9 @@ mod tests {
     }
 
     #[test]
-    fn test_papers_asserting_escapes_like_wildcards() {
+    fn test_papers_asserting_wildcards_inert() {
+        // Replaces the LIKE-escaping test: resolution is by concept, not substring, so
+        // wildcard characters in a query can never widen a match.
         let store = Store::open_in_memory().unwrap();
         store
             .save_assertions(
@@ -1059,19 +1401,22 @@ mod tests {
                 "v1",
                 &[
                     supported("Uses a 50% train split.", &["fifty percent"]),
-                    supported("Uses a 5040 sample split.", &["five thousand"]),
+                    supported("Attention improves accuracy.", &["attention improves"]),
                 ],
             )
             .unwrap();
 
-        // "50%" must match the literal "50%" claim only. Unescaped, the `%` would be
-        // a wildcard and also match "5040" (any claim containing "50").
-        let hits = store.papers_asserting("50%").unwrap();
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].1, "Uses a 50% train split.");
-
-        // A lone `_` must not act as a single-char wildcard either.
-        assert!(store.papers_asserting("50_").unwrap().is_empty());
+        for query in ["%", "_", "atten%", "50%", "atten_ion"] {
+            assert!(
+                store.papers_asserting(query).unwrap().is_empty(),
+                "{query:?} must match nothing"
+            );
+        }
+        // Punctuation is ignored, so `%attention%` is just `attention`: the wildcards
+        // add nothing, and the match is exactly the concept's.
+        let exact = store.papers_asserting("attention").unwrap();
+        assert_eq!(exact.len(), 1);
+        assert_eq!(store.papers_asserting("%attention%").unwrap(), exact);
     }
 
     #[test]

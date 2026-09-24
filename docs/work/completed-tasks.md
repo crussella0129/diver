@@ -402,3 +402,9 @@
 - **Completed:** 2026-09-24
 - **Touched:** diver-core/src/concept.rs (fold, folded classification, clause-bounded phrase candidates, form_concepts/ConceptSet/Concept/ConceptKind, query_key, digest_words/rules_digest, CONCEPT_FORMATION_VERSION). Boundary check via proving-ground probe on a copy of the real 13-paper corpus: 522 concepts (497 terms, 25 phrases, matching research), 0 subset-invariant violations, twice-equal and reversed-equal-after-remap both true.
 - **Commit:** `0cad000c93fb16ed722df9b7ac269183dcaecfe5`
+
+## T-1903 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/store.rs (concept tables concepts/concept_forms/assertion_concepts/meta; fingerprint + ensure_concepts_fresh + full rebuild under BEGIN IMMEDIATE; resolve_concept, claims_for_concept, concepts_related_to, concept_suggestions, concept_count, ConceptInfo/ConceptSummary; papers_asserting resolves through concepts; test_papers_asserting_escapes_like_wildcards replaced by test_papers_asserting_wildcards_inert). Boundary check via probe on a copy of the real corpus: upgrade path builds tables and 522 concepts on first read (7.6 ms); networks/network resolve alike to 6 papers; gan/net/art unresolved; model suggests diffusion models/transformer model/translation model; papers_asserting == claims_for_concept for every resolved query; a saved claim resolves on the next read and stops resolving after removal.
+- **Commit:** PENDING
