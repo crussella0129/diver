@@ -2,7 +2,7 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0020
-- **State:** planned
+- **State:** active
 - **Work evidence:** [Sprint 19 build plan](../sprints/s19/sprint-plans/build-plan.md) (T-1901 – T-1906)
 - **Completion evidence:** none
 - **Code evidence:** none
@@ -241,3 +241,4 @@ across 26 folds.
 - 2026-09-21: `proposed` → `planned`; linked to the Sprint 19 build plan (T-1901 stoplist split and vocabulary module, T-1902 formation, T-1903 persistence and freshness, T-1904 co-assertion re-key, T-1905 `dive`, T-1906 README). Plan-time design decisions recorded under Consequences: phrases stay inside a clause, a phrase subsumes its words in co-assertion (monotonicity preserved), `CoAssertion.term` and `papers_asserting` keep their names, two bag-of-words fixtures gain separators.
 - 2026-09-21: revised after Sprint 19 plan critique round 1, still `planned` (no state change). Tokens are classified by folded form, which restores the phrase-subsumption invariant the critique showed failing under raw-form classification; folding order fixed as `ies`, `sses`, `s` with the `bias`/`biases` limitation recorded; the refinement of INT-0014's `t = 1.0` endpoint recorded; the freshness fingerprint gains a stoplist digest; arXiv taxonomy vocabulary narrowed out of the Intent and recorded as a deferred alternative.
 - 2026-09-21: revised after Sprint 19 plan critique round 2, still `planned` (no state change). The folding consequence overclaimed ("misses a merge rather than making a wrong one"); corrected with an `ics` exclusion — preferring a missed merge over a derivational one, per this chapter's own principle — and an explicit list of the remaining missed-merge and wrong-merge classes.
+- 2026-09-24: `planned` → `active` (Sprint 19 build started; T-1901 first).

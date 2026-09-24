@@ -1,5 +1,6 @@
 pub mod assertion;
 pub mod client;
+pub mod concept;
 pub mod display;
 pub mod extract;
 pub mod fact;

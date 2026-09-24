@@ -391,3 +391,8 @@
 - **Touched:** README.md (new `### Corpus location (DIVER_DB)` under "Building a corpus", where the other env-var configuration lives — not the pre-Sprint-5 `## Database compatibility` migration warning)
 - **Commit:** `95fad05d9ae211ae9fc7acd74fc9d9117efaeef7`
 
+## T-1901 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/concept.rs (new: stoplist loading with comment support, significant_terms, and its two tests moved verbatim), diver-core/src/stopwords_common.txt (new, 308 words incl. web tokens and the 8 doubly-listed words), diver-core/src/stopwords_filler.txt (new, 217), diver-core/src/stopwords.txt (deleted), diver-core/src/graph.rs, diver-core/src/lib.rs, docs/intents/INT-0020-first-class-concepts.md, docs/intents/README.md. One-off check: union 525 == pre-split vocabulary 525, disjoint.
+- **Commit:** PENDING

@@ -1,0 +1,27 @@
+# Research filler: generic academic vocabulary (`model`, `method`, `results`, ...).
+# A filler word is never a concept on its own, but it MAY be the head (second word)
+# of a phrase — `language model`, `attention mechanism` — never its modifier:
+# `model establishes` forms no phrase. Lines starting with `#` are comments.
+# Classification is by folded form; editing this file rebuilds persisted concepts.
+abs abstract achieve achieved achieves achieving addition additional additionally address addresses aim aims allow allowing allows analysis applications applied applies apply approach approaches art arxiv available
+based baseline baselines benchmark benchmarks
+capabilities capability challenge challenges change compared comparison complex component components comprehensive conditions consider considered consists contains context contributions
+data demonstrate demonstrated demonstrates design designed detail detailed develop developed different difficult doi
+edu effective effectiveness effects efficient empirical enable enabled enables establish evaluate evaluated evaluates evaluation example existing experiment experimental experiments explore extensive extensively
+feature features field find finding findings finds framework function functions
+gain gains goal goals
+help helps html
+idea impact important improve improved improvement improvements improves improving include includes including increase increased increases increasing input introduce introduced introduces investigate io issue issues
+key
+learn learned learning leverage leverages limited literature
+mechanism mechanisms method methods model models multiple
+net
+observe observed obtain obtained org outperform outperforms
+paper papers pdf perform performance performed performs practice problem problems process processes produce produced
+quality
+related report reports represent representation representations represents require required requires research result results reveal reveals
+scenario scenarios score scores setting settings showing solution solutions solve solves solving specific standard state studies study success successful survey system systems
+task tasks technique techniques test testing tests thorough train trained training
+understand understanding utilize
+validate validated
+working
