@@ -17,28 +17,51 @@ Find knowledge, not just papers, on ArXiv
 
 ## Concept exploration (`diver dive`)
 
-`diver dive <concept>` traverses the **extracted knowledge graph**: it finds the
-papers whose stored assertions mention the concept, shows the matching claims, and
-lists the papers each is related to via deterministic edges:
+`diver dive <term>` traverses the **extracted knowledge graph**. It resolves the term
+to a **concept**, shows every stored claim that asserts about that concept, and lists
+the papers each is related to via deterministic edges.
+
+### Concepts
+
+Concepts are formed from your stored claims, deterministically — no model decides
+what a concept is — and rebuilt automatically whenever claims change:
+
+- **Words.** Every distinctive word is a concept. Plural forms are the same concept:
+  `diver dive networks` also finds the papers that only say `network`, and the header
+  lists every surface form seen (`forms: network ×5, networks ×5`).
+- **Phrases.** Two adjacent words that at least two papers share are a concept in their
+  own right — `machine translation`, `diffusion models`, `attention mechanism`. A phrase
+  is *linked to* its words, not merged into them: the header of a word lists its
+  `narrower:` phrases, and the header of a phrase lists its `broader:` words.
+- **Filler never stands alone.** Generic words (`model`, `method`, `results`) and common
+  English are never concepts by themselves, though filler can end a phrase
+  (`language model`). A common-word stoplist and a research-filler stoplist decide this.
+- **Unresolved terms suggest.** A term that is not a concept says so and lists the
+  concepts containing it: `diver dive model` offers `diffusion models`,
+  `transformer model`, …
+- **No substring matching.** Earlier versions matched any claim *containing* the text,
+  so `gan` matched "or**gan**ized". Concepts are whole words, which also means
+  derivational variants are distinct: `attention` does not reach `attentional`.
+
+### Edges
 
 - **shared category** or **shared author** (structural), and
-- **co-assertion** — the papers' stored claims share a significant term, so `dive`
-  links papers by *what they assert*, not only their metadata. Only **distinctive**
-  terms count: a common-word stoplist (general English + generic research filler like
-  `model`/`results`/`method` + web tokens like `https`/`github`) is removed first, so
-  links land on real shared concepts (`encoder`, `convolutional`, `bleu`) rather than
-  filler. Each edge is then weighted by the term's inverse document frequency across the
-  corpus (rarer terms score higher), shown as `co-asserts <term> (w=…)`.
+- **co-assertion** — the two papers' claims share a concept, so `dive` links papers by
+  *what they assert*, not only their metadata. Each edge names the concept and is
+  weighted by its inverse document frequency across the corpus (rarer concepts score
+  higher), shown as `co-asserts <concept> (w=…)`. When two papers share a phrase, they
+  are linked by the phrase alone — not additionally by each of its words.
 
 ### Temperature (`--temperature`)
 
-`diver dive <concept> --temperature <t>` tunes how permissive co-assertion linking
-is, with `t` in `[0.0, 1.0]` (default **0.5**):
+`diver dive <term> --temperature <t>` tunes how permissive co-assertion linking is,
+with `t` in `[0.0, 1.0]` (default **0.5**):
 
-- **low** (→ 0.0) links papers only on rare, distinctive shared terms — a sparse,
+- **low** (→ 0.0) links papers only on rare, distinctive shared concepts — a sparse,
   high-signal graph;
-- **high** (→ 1.0) also links on common shared terms — a denser graph. `1.0`
-  admits every shared term (the original unweighted behavior).
+- **high** (→ 1.0) also links on common shared concepts — a denser graph. `1.0` links
+  every shared concept, except words already covered by a phrase the same two papers
+  share.
 
 Only co-assertion edges are affected; structural (category/author) edges are always
 shown.
@@ -48,10 +71,11 @@ you care about first — a paper with no extracted assertions won't appear as a
 `dive` seed. (For plain abstract search, use `diver find`.)
 
 ```sh
-diver extract 2301.00001            # persist this paper's assertions
-diver dive attention                # explore (default temperature 0.5)
+diver extract 2301.00001                 # persist this paper's assertions
+diver dive attention                     # explore (default temperature 0.5)
+diver dive "machine translation"         # a phrase concept
 diver dive attention --temperature 0.0   # only the most distinctive links
-diver dive attention --temperature 1.0   # every shared term links
+diver dive attention --temperature 1.0   # every shared concept links
 ```
 
 ## Claim extraction (`diver extract`)
