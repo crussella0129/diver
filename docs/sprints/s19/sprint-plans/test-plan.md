@@ -1,3 +1,5 @@
+Finalized - DO NOT EDIT
+
 # Sprint 19 Test Plan
 
 Per user direction (2026-09-24): **operate first, test after, and keep tests lean.** The
