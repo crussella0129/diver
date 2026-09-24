@@ -13,7 +13,6 @@
 
 - [ ] T-1810 (backlog) [intent: INT-0019]: echo the resolved corpus path in a CLI affordance (e.g. `diver inspect`/`list` header) so a stray `DIVER_DB` is visible rather than silently redirecting the corpus — the second mitigation named in INT-0019 Consequences; the README warning (T-1803) is the first — touches: diver-cli/src/main.rs, diver-core/src/store.rs (`current_db_path` is already public)
 
-- [ ] T-1902 (sprint 19) [intent: INT-0020]: pure deterministic concept formation (folding, folded classification, phrases, labels, traceability, rules digest) — touches: diver-core/src/concept.rs
 - [ ] T-1903 (sprint 19) [intent: INT-0020]: persist concepts behind a freshness fingerprint; resolve, trace, relate, suggest, count — touches: diver-core/src/store.rs
 - [ ] T-1904 (sprint 19) [intent: INT-0020]: re-key co-assertion onto concepts with phrase subsumption — touches: diver-core/src/graph.rs
 - [ ] T-1905 (sprint 19) [intent: INT-0020]: `diver dive` through concepts — header, suggestions, empty hint, help text — touches: diver-cli/src/main.rs, diver-core/src/display.rs

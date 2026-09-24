@@ -1,17 +1,37 @@
-//! The vocabulary layer: how claim text is tokenized and which words count.
+//! Concept identity: how claim text becomes concepts.
 //!
 //! Two stoplists classify every token. *Common* words (general English, function
 //! words, web/URL tokens) are never concepts and break phrases. *Filler* words
 //! (generic research vocabulary such as `model` or `method`) are never concepts on
 //! their own but may head a phrase. Everything else is *content*.
+//!
+//! Classification is by **folded** form: a token's category is the category of its
+//! plural-folded key against the folded stoplists, common taking precedence, so every
+//! inflection of a word is treated alike (`state` and `states` are both filler).
+//!
+//! [`form_concepts`] turns `(paper, claim)` pairs into a deterministic
+//! [`ConceptSet`]: one `Term` concept per folded content word, and one `Phrase`
+//! concept per two-word phrase shared by at least two papers. Every concept keeps
+//! its observed surface forms and the claims and papers that formed it. No model is
+//! involved; the same claims always yield the same concepts.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::LazyLock;
+
+/// Bump whenever the formation rules in this module change in code. Persisted
+/// concepts are rebuilt when this, the stoplists' digest, or the stored claims change.
+pub const CONCEPT_FORMATION_VERSION: u32 = 1;
 
 /// Common words: never concepts, and they break phrases.
 const COMMON_WORDS: &str = include_str!("stopwords_common.txt");
 /// Research filler: never concepts alone, but may be a phrase's head.
 const FILLER_WORDS: &str = include_str!("stopwords_filler.txt");
+
+/// Characters that end a clause. A phrase never spans one. Hyphens and slashes are
+/// deliberately absent, so `encoder-decoder` forms `encoder decoder`.
+const CLAUSE_BREAKS: &[char] = &[
+    '.', ',', ';', ':', '!', '?', '(', ')', '[', ']', '{', '}', '"',
+];
 
 /// The words listed in a stoplist file, skipping `#` comment lines.
 fn listed_words(file: &str) -> impl Iterator<Item = &str> {
@@ -20,36 +40,279 @@ fn listed_words(file: &str) -> impl Iterator<Item = &str> {
         .flat_map(str::split_whitespace)
 }
 
-/// Words excluded from significant terms: the union of both stoplists — common
-/// English, generic research filler (`model`, `results`, `method`, `propose`,
-/// `existing`, …), near-function words, and web/URL tokens (`https`, `github`).
-/// Domain terms (`attention`, `transformer`, `diffusion`, `convolutional`,
-/// `translation`, `neural`, …) are intentionally absent, so `dive` links papers by
-/// distinctive shared vocabulary, not filler. IDF weights the surviving terms; it
-/// cannot do this job alone because a generic-but-corpus-rare word (e.g. `eight`,
-/// df 2) still scores a high weight. Built once into a `HashSet` for O(1) membership.
-static STOPWORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
-    listed_words(COMMON_WORDS)
-        .chain(listed_words(FILLER_WORDS))
-        .collect()
-});
+/// Folded common words. Built once for O(1) membership.
+static COMMON: LazyLock<HashSet<String>> =
+    LazyLock::new(|| listed_words(COMMON_WORDS).map(fold).collect());
+/// Folded filler words. Built once for O(1) membership.
+static FILLER: LazyLock<HashSet<String>> =
+    LazyLock::new(|| listed_words(FILLER_WORDS).map(fold).collect());
+
+/// How a token participates in concept formation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenCategory {
+    /// Never a concept; breaks a phrase.
+    Common,
+    /// Never a concept alone; may be a phrase's head (second word).
+    Filler,
+    /// A concept word.
+    Content,
+}
+
+/// Fold a lowercased token across plural inflection. The first matching rule wins:
+/// longer than 4 and ending in `ies` → `y` (`families` → `family`); longer than 4
+/// and ending in `sses` → drop `es` (`classes` → `class`); ending in `ics` →
+/// unchanged, so derivational pairs such as `semantics`/`semantic` stay apart;
+/// longer than 3 and ending in `s` but not `ss`, `us`, or `is` → drop the `s`.
+/// Anything else is returned unchanged. A suffix heuristic by design: it prefers a
+/// missed merge (`bias`/`biases`) over a wrong one.
+pub fn fold(token: &str) -> String {
+    let n = token.chars().count();
+    if n > 4 && token.ends_with("ies") {
+        return format!("{}y", &token[..token.len() - 3]);
+    }
+    if n > 4 && token.ends_with("sses") {
+        return token[..token.len() - 2].to_string();
+    }
+    if token.ends_with("ics") {
+        return token.to_string();
+    }
+    if n > 3
+        && token.ends_with('s')
+        && !token.ends_with("ss")
+        && !token.ends_with("us")
+        && !token.ends_with("is")
+    {
+        return token[..token.len() - 1].to_string();
+    }
+    token.to_string()
+}
+
+/// The category of a lowercased token: the category of its folded key, common
+/// taking precedence over filler.
+pub fn category(token: &str) -> TokenCategory {
+    let key = fold(token);
+    if COMMON.contains(&key) {
+        TokenCategory::Common
+    } else if FILLER.contains(&key) {
+        TokenCategory::Filler
+    } else {
+        TokenCategory::Content
+    }
+}
+
+/// A token can take part in a concept only if it is at least 3 characters long and
+/// contains a letter, so figures (`100`, `2023`) and fragments never link papers.
+fn passes_token_rule(token: &str) -> bool {
+    token.chars().count() >= 3 && token.chars().any(char::is_alphabetic)
+}
+
+/// Alphanumeric runs, lowercased.
+fn tokens(text: &str) -> impl Iterator<Item = String> + '_ {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|tok| !tok.is_empty())
+        .map(str::to_lowercase)
+}
 
 /// Extract a claim's significant terms: alphanumeric tokens, lowercased, at least
-/// 3 chars long, containing at least one letter, excluding [`STOPWORDS`].
-/// Punctuation and case are ignored; pure-number tokens (e.g. "100", "2023") are
-/// dropped so shared figures do not spuriously link papers, while mixed tokens
-/// ("gpt3", "h100") survive.
+/// 3 chars long, containing at least one letter, whose folded form is neither a
+/// common nor a filler word. Punctuation and case are ignored; pure-number tokens
+/// (e.g. "100", "2023") are dropped so shared figures do not spuriously link papers,
+/// while mixed tokens ("gpt3", "h100") survive. Returns surface forms, unfolded.
 pub fn significant_terms(claim: &str) -> Vec<String> {
-    claim
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|tok| !tok.is_empty())
-        .map(|tok| tok.to_lowercase())
-        .filter(|tok| {
-            tok.chars().count() >= 3
-                && tok.chars().any(|c| c.is_alphabetic())
-                && !STOPWORDS.contains(tok.as_str())
-        })
+    tokens(claim)
+        .filter(|tok| passes_token_rule(tok) && category(tok) == TokenCategory::Content)
         .collect()
+}
+
+/// Two-word phrase candidates in a claim, as `(folded id, surface form)`. A pair of
+/// adjacent tokens in one clause forms a candidate when both pass the token rule,
+/// the first is content, and the second is content or filler.
+fn phrase_candidates(claim: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for clause in claim.split(CLAUSE_BREAKS) {
+        let toks: Vec<String> = tokens(clause).collect();
+        for pair in toks.windows(2) {
+            let (a, b) = (&pair[0], &pair[1]);
+            if !(passes_token_rule(a) && passes_token_rule(b)) {
+                continue;
+            }
+            if category(a) != TokenCategory::Content || category(b) == TokenCategory::Common {
+                continue;
+            }
+            out.push((format!("{} {}", fold(a), fold(b)), format!("{a} {b}")));
+        }
+    }
+    out
+}
+
+/// Normalize a user query into a concept id: tokenize, drop common words and tokens
+/// failing the token rule, fold the rest, and join with single spaces
+/// (`"The Diffusion Models"` → `"diffusion model"`). `None` when nothing remains.
+pub fn query_key(query: &str) -> Option<String> {
+    let parts: Vec<String> = tokens(query)
+        .filter(|tok| passes_token_rule(tok) && category(tok) != TokenCategory::Common)
+        .map(|tok| fold(&tok))
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(" "))
+}
+
+/// Whether a concept is a single word or a two-word phrase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ConceptKind {
+    Term,
+    Phrase,
+}
+
+impl ConceptKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ConceptKind::Term => "term",
+            ConceptKind::Phrase => "phrase",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "term" => Some(ConceptKind::Term),
+            "phrase" => Some(ConceptKind::Phrase),
+            _ => None,
+        }
+    }
+}
+
+/// A formed concept. `id` is the folded key (stable across rebuilds and corpus
+/// growth); `label` is the most frequent surface form, ties broken by the
+/// lexicographically smallest. `claims` are indices into the input of
+/// [`form_concepts`]; `papers` are the papers those claims belong to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Concept {
+    pub id: String,
+    pub label: String,
+    pub kind: ConceptKind,
+    pub forms: BTreeMap<String, usize>,
+    pub claims: BTreeSet<usize>,
+    pub papers: BTreeSet<String>,
+}
+
+impl Concept {
+    fn new(id: String, kind: ConceptKind) -> Self {
+        Self {
+            id,
+            label: String::new(),
+            kind,
+            forms: BTreeMap::new(),
+            claims: BTreeSet::new(),
+            papers: BTreeSet::new(),
+        }
+    }
+
+    fn observe(&mut self, surface: String, claim: usize, paper: &str) {
+        *self.forms.entry(surface).or_insert(0) += 1;
+        self.claims.insert(claim);
+        self.papers.insert(paper.to_string());
+    }
+
+    /// For a phrase, its two word ids; for a term, its own id.
+    pub fn words(&self) -> impl Iterator<Item = &str> {
+        self.id.split(' ')
+    }
+}
+
+/// Every concept formed from a set of claims, keyed by id.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ConceptSet {
+    pub concepts: BTreeMap<String, Concept>,
+}
+
+impl ConceptSet {
+    pub fn get(&self, id: &str) -> Option<&Concept> {
+        self.concepts.get(id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Concept> {
+        self.concepts.values()
+    }
+
+    pub fn len(&self) -> usize {
+        self.concepts.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.concepts.is_empty()
+    }
+}
+
+/// Form concepts from `(arxiv_id, claim)` pairs. Deterministic: ordered collections
+/// throughout, so the same claims always produce the same set, and input order only
+/// affects the recorded claim indices.
+pub fn form_concepts(claims: &[(String, String)]) -> ConceptSet {
+    let mut concepts: BTreeMap<String, Concept> = BTreeMap::new();
+
+    for (idx, (paper, claim)) in claims.iter().enumerate() {
+        for term in significant_terms(claim) {
+            concepts
+                .entry(fold(&term))
+                .or_insert_with_key(|id| Concept::new(id.clone(), ConceptKind::Term))
+                .observe(term, idx, paper);
+        }
+        for (id, surface) in phrase_candidates(claim) {
+            concepts
+                .entry(id)
+                .or_insert_with_key(|id| Concept::new(id.clone(), ConceptKind::Phrase))
+                .observe(surface, idx, paper);
+        }
+    }
+
+    // Recurrence is the evidence a word pair is a unit: a phrase needs two papers.
+    concepts.retain(|_, c| c.kind == ConceptKind::Term || c.papers.len() >= 2);
+
+    for concept in concepts.values_mut() {
+        concept.label = best_form(&concept.forms);
+    }
+
+    ConceptSet { concepts }
+}
+
+/// The most frequent form; ties go to the lexicographically smallest, which is the
+/// first one a `BTreeMap` yields.
+fn best_form(forms: &BTreeMap<String, usize>) -> String {
+    let mut best: Option<(&String, usize)> = None;
+    for (form, &count) in forms {
+        if best.is_none_or(|(_, n)| count > n) {
+            best = Some((form, count));
+        }
+    }
+    best.map(|(form, _)| form.clone()).unwrap_or_default()
+}
+
+/// FNV-1a over a byte slice, continuing from `hash`.
+fn fnv1a(mut hash: u64, bytes: &[u8]) -> u64 {
+    for &b in bytes {
+        hash ^= u64::from(b);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// A deterministic digest of two stoplists' words. Whitespace and line endings do
+/// not matter; adding, removing, or moving a word between the lists does.
+pub fn digest_words(common: &str, filler: &str) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325;
+    for word in listed_words(common) {
+        hash = fnv1a(hash, word.as_bytes());
+        hash = fnv1a(hash, &[0]);
+    }
+    hash = fnv1a(hash, &[1]);
+    for word in listed_words(filler) {
+        hash = fnv1a(hash, word.as_bytes());
+        hash = fnv1a(hash, &[0]);
+    }
+    hash
+}
+
+/// The digest of the embedded stoplists; part of the persisted-concept fingerprint.
+pub fn rules_digest() -> u64 {
+    digest_words(COMMON_WORDS, FILLER_WORDS)
 }
 
 #[cfg(test)]
