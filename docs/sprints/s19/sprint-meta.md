@@ -8,6 +8,6 @@
 - **Bundle version:** 0.22.0
 - **Exit status:** in-progress
 - **Token count:** (filled at Loop Phase if observable)
-- **Summary:** (one-line description of sprint goal, filled after Plan Phase)
-- **Intents:** (filled after Plan Phase)
+- **Summary:** Concepts as first-class entities (INT-0020): replace substring concept matching with deterministic, persisted concept identity — plural folding, two-word phrases under a common/filler category rule, freshness fingerprint, concept-keyed co-assertion with phrase subsumption, and `dive` resolution with suggestions for unresolved terms. Grounded in a read-only probe of the real corpus.
+- **Intents:** [INT-0020](../../intents/INT-0020-first-class-concepts.md) (planned)
 - **Completion evidence:** (filled at Loop Phase)

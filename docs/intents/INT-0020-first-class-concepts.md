@@ -2,8 +2,8 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0020
-- **State:** proposed
-- **Work evidence:** none
+- **State:** planned
+- **Work evidence:** [Sprint 19 build plan](../sprints/s19/sprint-plans/build-plan.md) (T-1901 – T-1906)
 - **Completion evidence:** none
 - **Code evidence:** none
 - **Test evidence:** none
@@ -23,9 +23,10 @@ Give concepts identity, derived deterministically from the corpus:
   Papers stay provenance containers; claims stay the epistemic unit; concepts
   become the axis you navigate along.
 - **Deterministic, corpus-derived formation.** Concepts come from surface forms
-  observed in claims plus corpus statistics (document frequency, distinctiveness)
-  and arXiv's own vocabulary — categories, and the terminology the taxonomy
-  already implies. No model is asked to invent an ontology.
+  observed in claims plus corpus statistics (document frequency, distinctiveness).
+  No model is asked to invent an ontology. arXiv's own taxonomy vocabulary as a
+  further input is deferred — see Alternatives. *(Narrowed after Sprint 19's plan
+  critique: the first realization uses claim text only.)*
 - **Surface forms map many-to-one — for inflection only.** `network` and
   `networks`, or `diffusion model` and `diffusion models`, are one concept, with
   every observed surface form retained and inspectable. A phrase is its own
@@ -45,7 +46,8 @@ Give concepts identity, derived deterministically from the corpus:
 - **Concepts are materialized and never stale.** Formation runs over the whole
   stored corpus and persists its result. Because any claim write — and any change
   to the formation rules — can change the concept set, a fingerprint of the stored
-  claims plus a formation-version constant is checked on read, and a mismatch
+  claims, a formation-version constant and a digest of the stoplists is checked on
+  read, and a mismatch
   triggers a full, deterministic rebuild. This is a full rebuild on change, not the
   incremental maintenance [[incremental-materialization]] (INT-0024) defers.
 - **Co-assertion re-keys onto concepts.** `RelationKind::CoAssertion` carries a
@@ -100,8 +102,8 @@ which is exactly the "let the LLM secretly become the database" failure the
 review itself warns against.
 
 Concept identity is also the most *deterministically tractable* of the remaining
-problems. Corpus statistics, morphological variants, and arXiv's taxonomy get a
-long way without a model in the loop, which preserves the property that makes
+problems. Corpus statistics and morphological variants — and, later, arXiv's
+taxonomy — get a long way without a model in the loop, which preserves the property that makes
 Diver interesting: its skeleton was not hallucinated.
 
 Sprint 19 measured the problem on the real 13-paper corpus
@@ -145,6 +147,14 @@ across 26 folds.
 - **Three-word phrases** — deferred. They would absorb bigram fragments such as
   `neural machine` (from *neural machine translation*), at the cost of more
   combinatorial noise.
+- **Seeding concepts from arXiv's taxonomy vocabulary** — deferred. Category names
+  are coarse (*Computation and Language*) and would add concepts that no stored claim
+  uses; they fit better as a later cross-reference layer mapping claim concepts onto
+  categories than as a formation input.
+- **Classifying a token by its raw form** (the stoplist as written) — rejected in plan
+  review. The stoplist often lists one inflection but not the other (`states` unlisted,
+  `state` listed), so raw classification would build a concept from half its forms and
+  break the phrase-subsumption invariant below.
 
 ## Consequences
 
@@ -170,7 +180,64 @@ across 26 folds.
 - Two-word phrases leave fragments (`neural machine`, `convolutional neural`), and a
   little boilerplate survives (`project page`); both are recorded, not chased —
   tuning against 13 papers would overfit.
+- **Phrases stay inside a clause.** Punctuation (`. , ; : ! ? ( ) [ ] { } "`), numbers,
+  and short tokens break a phrase; hyphens and slashes do not, so `encoder-decoder` and
+  `pre-trained` form.
+- **Tokens are classified by their folded form.** The stoplists are folded too, and a
+  token's category (common, filler, content) is the category of its folded key, common
+  taking precedence. Every inflection of a word therefore gets the same treatment. Two
+  directions change on the current lists: the plural of a listed singular is now stopped
+  with it (for example `states`, `inputs` and `details` become filler, `parts` and `ones`
+  common), and six singulars whose plural was listed become filler — `application`,
+  `condition`, `consist`, `contain`, `contribution`, `effect`. Filler words can still
+  head a phrase (`hidden state`, `boundary condition`).
+- **Folding is a suffix heuristic, tuned to prefer a missed merge over a wrong one.**
+  Rules apply in order: `ies` → `y`; `sses` → drop `es`; words ending in `ics` are left
+  alone; otherwise a final `s` is dropped unless the word ends in `ss`, `us` or `is`. The
+  `ics` exclusion exists because stripping `s` would merge derivational pairs the Intent
+  keeps apart (`semantics`/`semantic`, `logistics`/`logistic`); it costs genuine plurals
+  such as `metrics`/`metric` their merge. Known limitations, recorded rather than chased:
+  - *Missed merges:* singulars ending in `s` (`bias` → `bia`, `biases` → `biase`);
+    `-ches`/`-shes`/`-xes` plurals (`batches`, `patches`); acronym plurals ending in `us`
+    (`gpus` stays apart from `gpu` — both appear in the checked-in fixture); and verb
+    forms whose stems are listed differently (`establish` is filler, `establishes`
+    content).
+  - *Wrong merges still possible:* `news` folds to the common word `new` and so never
+    resolves; a plural noun whose singular is listed for its adjective or verb sense is
+    stopped with it (`priors` → common `prior`, `keys` → filler `key`).
+  Traceability (criterion 6) keeps every merge inspectable. A lexicon-backed
+  lemmatizer would fix most of these, at the cost of a dependency and a vocabulary that
+  lags the field; deferred.
+- **A phrase subsumes its words in co-assertion.** When two papers share a phrase, the
+  edges for its individual content words are dropped for that pair, so one overlap is
+  one edge rather than three. This keeps edges monotonic in temperature *because*
+  tokens are classified by folded form: every paper containing a phrase then contains a
+  token of the same category folding to each of its content words, so the phrase's paper
+  count never exceeds theirs and its weight is never below theirs. (A filler head forms
+  no word concept, so there is nothing to subsume.) Under that invariant, suppressing
+  the word edge unconditionally and suppressing it only when the phrase edge clears the
+  gate are the same rule. *(Corrected after Sprint 19's plan critique, which showed the
+  earlier justification failed under raw-form classification.)*
+- **This refines INT-0014's `t = 1.0` endpoint.** [[weighted-coassertion-temperature]]
+  says the fully permissive temperature keeps every shared term. It now keeps every
+  shared concept except the words a pair's shared phrase subsumes. The IDF formula,
+  the gate, the small-corpus guard and `N` (distinct papers with at least one claim) are
+  unchanged.
+- **Stoplist edits force a rebuild.** The freshness fingerprint includes a digest of both
+  stoplists' word lists, so editing either list invalidates persisted concepts even if
+  nobody bumps the formation version.
+- **`CoAssertion.term` keeps its name** and now carries the concept's label. Renaming it
+  would mean editing the tests that prove criterion 5 held; the rename is deferred.
+- **`Store::papers_asserting` keeps its signature** but resolves through concepts. Its
+  former LIKE-escaping test tested behaviour that no longer exists and is replaced by
+  one asserting that wildcard characters match nothing.
+- Two synthetic test fixtures that were bags of content words (`"rare mid common"`,
+  `"zebra apple mango"`) now legitimately form shared phrases, and gain comma separators;
+  their assertions are unchanged.
 
 ## Transition history
 - 2026-09-02: created as `proposed` during Sprint 18 roadmap realignment, in response to the external review; ordering deliberately inverted relative to that review's recommendation, with reasoning recorded above.
 - 2026-09-21: revised during Sprint 19 research, still `proposed` (no state change). A read-only probe of the real corpus showed that (a) "many-to-one" must mean inflection only — merging `attention mechanism` into `attention` would disguise a broader/narrower judgement as identity; (b) the unmodified stoplist destroys key phrases, so it must split into phrase-breaking and head-eligible categories; (c) materialized concepts need a freshness guarantee. Intent, criterion 2 (suggestions for unresolved terms), new criterion 7 (freshness), Rationale, Alternatives, and Consequences updated accordingly.
+- 2026-09-21: `proposed` → `planned`; linked to the Sprint 19 build plan (T-1901 stoplist split and vocabulary module, T-1902 formation, T-1903 persistence and freshness, T-1904 co-assertion re-key, T-1905 `dive`, T-1906 README). Plan-time design decisions recorded under Consequences: phrases stay inside a clause, a phrase subsumes its words in co-assertion (monotonicity preserved), `CoAssertion.term` and `papers_asserting` keep their names, two bag-of-words fixtures gain separators.
+- 2026-09-21: revised after Sprint 19 plan critique round 1, still `planned` (no state change). Tokens are classified by folded form, which restores the phrase-subsumption invariant the critique showed failing under raw-form classification; folding order fixed as `ies`, `sses`, `s` with the `bias`/`biases` limitation recorded; the refinement of INT-0014's `t = 1.0` endpoint recorded; the freshness fingerprint gains a stoplist digest; arXiv taxonomy vocabulary narrowed out of the Intent and recorded as a deferred alternative.
+- 2026-09-21: revised after Sprint 19 plan critique round 2, still `planned` (no state change). The folding consequence overclaimed ("misses a merge rather than making a wrong one"); corrected with an `ics` exclusion — preferring a missed merge over a derivational one, per this chapter's own principle — and an explicit list of the remaining missed-merge and wrong-merge classes.
