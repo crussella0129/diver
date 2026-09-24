@@ -1,11 +1,12 @@
 use owo_colors::OwoColorize;
 
 use crate::assertion::{Assertion, Supported};
+use crate::concept::ConceptKind;
 use crate::fact::SourceFact;
 use crate::graph::{DiveNode, RelationKind};
 use crate::id::ArxivCategory;
 use crate::model::Paper;
-use crate::store::{SearchResult, StoredAssertion};
+use crate::store::{ConceptInfo, ConceptSummary, SearchResult, StoredAssertion};
 
 pub fn display_results(papers: &[Paper], total: u32) {
     if papers.is_empty() {
@@ -157,19 +158,86 @@ fn relation_reason(kind: &RelationKind) -> String {
     }
 }
 
-/// Display a `diver dive` neighborhood: each asserting paper, its matching
-/// claims, and its related papers (bounded per node).
-pub fn display_dive(concept: &str, nodes: &[DiveNode]) {
-    println!("{}", format!("Dive: {concept}").bold());
-    println!();
-
-    if nodes.is_empty() {
-        println!(
-            "  {}",
-            format!("No papers assert about '{concept}'. Run `diver extract <id>` first.").dimmed()
-        );
-        return;
+fn plural(n: usize, word: &str) -> String {
+    if n == 1 {
+        format!("{n} {word}")
+    } else {
+        format!("{n} {word}s")
     }
+}
+
+/// Header lines for a resolved concept: its label, kind and reach, the surface forms
+/// it was formed from, and the concepts linked to it (narrower phrases for a term,
+/// broader constituent terms for a phrase). Plain text, no styling.
+pub fn format_dive_header(info: &ConceptInfo, related: &[ConceptSummary]) -> Vec<String> {
+    let mut lines = vec![format!(
+        "Dive: {} ({}, {})",
+        info.label,
+        info.kind.as_str(),
+        plural(info.paper_count, "paper")
+    )];
+    let forms: Vec<String> = info
+        .forms
+        .iter()
+        .map(|(form, count)| format!("{form} \u{00d7}{count}"))
+        .collect();
+    lines.push(format!("  forms: {}", forms.join(", ")));
+    if !related.is_empty() {
+        let heading = match info.kind {
+            ConceptKind::Term => "narrower",
+            ConceptKind::Phrase => "broader",
+        };
+        let names: Vec<String> = related
+            .iter()
+            .map(|c| format!("{} ({})", c.label, c.paper_count))
+            .collect();
+        lines.push(format!("  {heading}: {}", names.join(", ")));
+    }
+    lines
+}
+
+/// Lines for a term that resolves to no concept: with no concepts at all, the
+/// `diver extract` hint; otherwise a not-a-concept notice and the concepts that
+/// contain the term, when there are any. Plain text, no styling.
+pub fn format_dive_unresolved(
+    term: &str,
+    has_concepts: bool,
+    suggestions: &[ConceptSummary],
+) -> Vec<String> {
+    let mut lines = vec![format!("Dive: {term}")];
+    if !has_concepts {
+        lines.push(
+            "  No concepts yet: run `diver extract <id>` or `diver extract --all` first."
+                .to_string(),
+        );
+    } else if suggestions.is_empty() {
+        lines.push(format!(
+            "  '{term}' is not a concept in this corpus, and no concept contains it."
+        ));
+    } else {
+        lines.push(format!(
+            "  '{term}' is not a concept in this corpus. Concepts containing it:"
+        ));
+        for c in suggestions {
+            lines.push(format!(
+                "    {} ({})",
+                c.label,
+                plural(c.paper_count, "paper")
+            ));
+        }
+    }
+    lines
+}
+
+/// Display a resolved `diver dive`: the concept header, then each asserting paper,
+/// its claims about the concept, and its related papers (bounded per node).
+pub fn display_dive_concept(info: &ConceptInfo, related: &[ConceptSummary], nodes: &[DiveNode]) {
+    let header = format_dive_header(info, related);
+    println!("{}", header[0].bold());
+    for line in &header[1..] {
+        println!("{}", line.dimmed());
+    }
+    println!();
 
     for node in nodes {
         println!("{}  {}", node.arxiv_id.bold(), node.title);
@@ -191,6 +259,15 @@ pub fn display_dive(concept: &str, nodes: &[DiveNode]) {
             }
         }
         println!();
+    }
+}
+
+/// Display a `diver dive` whose term resolves to no concept.
+pub fn display_dive_unresolved(term: &str, has_concepts: bool, suggestions: &[ConceptSummary]) {
+    let lines = format_dive_unresolved(term, has_concepts, suggestions);
+    println!("{}", lines[0].bold());
+    for line in &lines[1..] {
+        println!("{line}");
     }
 }
 

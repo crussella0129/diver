@@ -13,5 +13,4 @@
 
 - [ ] T-1810 (backlog) [intent: INT-0019]: echo the resolved corpus path in a CLI affordance (e.g. `diver inspect`/`list` header) so a stray `DIVER_DB` is visible rather than silently redirecting the corpus — the second mitigation named in INT-0019 Consequences; the README warning (T-1803) is the first — touches: diver-cli/src/main.rs, diver-core/src/store.rs (`current_db_path` is already public)
 
-- [ ] T-1905 (sprint 19) [intent: INT-0020]: `diver dive` through concepts — header, suggestions, empty hint, help text — touches: diver-cli/src/main.rs, diver-core/src/display.rs
 - [ ] T-1906 (sprint 19) [intent: INT-0020]: document concept resolution in the README — touches: README.md
