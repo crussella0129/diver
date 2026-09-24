@@ -413,4 +413,4 @@
 - **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
 - **Completed:** 2026-09-24
 - **Touched:** diver-core/src/graph.rs (compute_coassertion_relations re-keyed onto form_concepts with phrase subsumption and a paper index; doc comment updated for concepts and the refined t = 1.0 endpoint; two bag-of-words fixtures gained comma separators, assertions unchanged — verified first that exactly those three tests failed for the predicted reason). Boundary check via probe on the real corpus: edges t0/t0.5/t1 = 60/189/305, monotonic, 0 subsumption violations, network edges single-labelled; the hidden-state counterexample is monotonic.
-- **Commit:** PENDING
+- **Commit:** `62bd5070a9d43602f8b314f8287c1b8df4a5d971`
