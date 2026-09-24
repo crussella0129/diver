@@ -401,4 +401,4 @@
 - **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
 - **Completed:** 2026-09-24
 - **Touched:** diver-core/src/concept.rs (fold, folded classification, clause-bounded phrase candidates, form_concepts/ConceptSet/Concept/ConceptKind, query_key, digest_words/rules_digest, CONCEPT_FORMATION_VERSION). Boundary check via proving-ground probe on a copy of the real 13-paper corpus: 522 concepts (497 terms, 25 phrases, matching research), 0 subset-invariant violations, twice-equal and reversed-equal-after-remap both true.
-- **Commit:** PENDING
+- **Commit:** `0cad000c93fb16ed722df9b7ac269183dcaecfe5`
