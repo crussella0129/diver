@@ -419,4 +419,4 @@
 - **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
 - **Completed:** 2026-09-24
 - **Touched:** diver-cli/src/main.rs (dive resolves via resolve_concept, then claims_for_concept/concepts_related_to; unresolved branch on concept_count/concept_suggestions; concept and --temperature help text), diver-core/src/display.rs (format_dive_header, format_dive_unresolved, display_dive_concept, display_dive_unresolved replace display_dive). Boundary check with the release binary on a copy of the real corpus: dive networks -> network (6 papers, both forms, narrower neural networks); dive model -> suggestions; dive gan -> not a concept; empty DIVER_DB -> extract hint; --help states the new semantics; live ingest+extract of 2006.11239 between two dives appears in the second (2 -> 3 papers). Drive finding logged for later: related lists are dominated by shared-category edges.
-- **Commit:** PENDING
+- **Commit:** `77cff11ddc1805dc96e75581fe2b8b312689c8d6`
