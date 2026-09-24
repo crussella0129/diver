@@ -8,7 +8,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::concept::significant_terms;
+use crate::concept::{Concept, ConceptKind, form_concepts};
 use crate::fact::SourceFact;
 
 /// Why two papers are related.
@@ -151,26 +151,36 @@ pub fn build_dive(
     nodes
 }
 
-/// Compute co-assertion edges: papers whose persisted claims share a significant
-/// term, weighted by inverse document frequency and gated by `temperature`.
+/// Compute co-assertion edges: papers whose persisted claims share a concept,
+/// weighted by inverse document frequency and gated by `temperature`.
 ///
-/// `claims` is `(arxiv_id, claim)` for every persisted assertion. Each paper is a
-/// document; a term's document frequency `df` is the number of papers whose
-/// (deduplicated) significant terms contain it. A *shared* term has `df >= 2`, so
-/// its normalized weight `w = ln(N/df) / ln(N/2)` lies in `[0.0, 1.0]` — `1.0` when
-/// shared by exactly two papers (rarest, most distinctive), `0.0` when shared by
-/// all `N` (ubiquitous). An edge is emitted for a shared term iff
-/// `w >= 1.0 - temperature`:
-/// - `temperature == 1.0` keeps every shared term (threshold `0.0`);
-/// - `temperature == 0.0` keeps only `df == 2` terms (threshold `1.0`);
+/// `claims` is `(arxiv_id, claim)` for every persisted assertion. Concepts are formed
+/// from them by [`form_concepts`] — the same rules `diver dive` persists, so the two
+/// can never disagree. Each paper is a document; a concept's document frequency `df`
+/// is the number of papers whose claims form it, and `N` is the number of distinct
+/// papers in `claims` (including papers whose claims form no concept). A *shared*
+/// concept has `df >= 2`, so its normalized weight `w = ln(N/df) / ln(N/2)` lies in
+/// `[0.0, 1.0]` — `1.0` when shared by exactly two papers (rarest, most distinctive),
+/// `0.0` when shared by all `N` (ubiquitous). An edge names the concept's label and is
+/// emitted iff `w >= 1.0 - temperature`:
+/// - `temperature == 1.0` keeps every shared concept (threshold `0.0`), except the
+///   words a pair's shared phrase subsumes (below);
+/// - `temperature == 0.0` keeps only `df == 2` concepts (threshold `1.0`);
 /// - the kept set is monotonic non-decreasing in `temperature`.
 ///
+/// **Phrase subsumption.** When a pair shares a phrase concept (`machine
+/// translation`), the edges for its individual word concepts (`machine`,
+/// `translation`) are dropped for that pair, at every temperature, so one overlap is
+/// one edge. This keeps monotonicity: every paper forming a phrase also forms each of
+/// its content words, so a phrase's `df` never exceeds theirs and its weight is never
+/// below theirs.
+///
 /// When `N <= 2` there is no discriminating power (and `ln(N/2)` would be `0`), so
-/// every shared term is kept with `weight = 1.0`, at any temperature. `temperature`
+/// every shared concept is kept with `weight = 1.0`, at any temperature. `temperature`
 /// is clamped to `[0.0, 1.0]`; a non-finite value (NaN/inf) is treated as `1.0`
-/// (fully permissive). One edge per shared term per unordered pair of
-/// distinct papers; shared terms are emitted in sorted order for stable,
-/// deterministic output. No self-edges.
+/// (fully permissive). One edge per shared concept per unordered pair of distinct
+/// papers, oriented by first appearance in `claims`; edges for a pair are emitted in
+/// label order for stable, deterministic output. No self-edges.
 pub fn compute_coassertion_relations(
     claims: &[(String, String)],
     temperature: f64,
@@ -186,74 +196,84 @@ pub fn compute_coassertion_relations(
     };
     let threshold = 1.0 - t;
 
-    // Group each paper's significant terms (deduplicated, order-preserving),
-    // keeping papers in first-seen order.
-    let mut papers: Vec<String> = Vec::new();
-    let mut terms_by_paper: Vec<Vec<String>> = Vec::new();
-    for (arxiv_id, claim) in claims {
-        let idx = match papers.iter().position(|p| p == arxiv_id) {
-            Some(idx) => idx,
-            None => {
-                papers.push(arxiv_id.clone());
-                terms_by_paper.push(Vec::new());
-                papers.len() - 1
-            }
-        };
-        terms_by_paper[idx].extend(significant_terms(claim));
-    }
-    for terms in &mut terms_by_paper {
-        *terms = dedup_preserve_order(terms.iter().map(|s| s.as_str()))
-            .into_iter()
-            .map(str::to_string)
-            .collect();
-    }
-
-    // Document frequency: how many papers' deduped terms contain each term.
-    let n = papers.len();
-    let mut df: HashMap<&str, usize> = HashMap::new();
-    for terms in &terms_by_paper {
-        for term in terms {
-            *df.entry(term.as_str()).or_insert(0) += 1;
+    // Papers in first-seen order; edge orientation (from, to) follows it.
+    let mut papers: Vec<&str> = Vec::new();
+    let mut paper_index: HashMap<&str, usize> = HashMap::new();
+    for (arxiv_id, _) in claims {
+        if !paper_index.contains_key(arxiv_id.as_str()) {
+            paper_index.insert(arxiv_id, papers.len());
+            papers.push(arxiv_id);
         }
     }
+    let n = papers.len();
 
-    // Normalized IDF weight per term, computed once. With N <= 2 every shared term
-    // has df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
+    // Only concepts shared by two or more papers can link anything.
+    let set = form_concepts(claims);
+    let shared: Vec<&Concept> = set.iter().filter(|c| c.papers.len() >= 2).collect();
+
+    // Normalized IDF weight per shared concept. With N <= 2 every shared concept has
+    // df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
     let ln_max = if n > 2 { (n as f64 / 2.0).ln() } else { 0.0 };
-    let weight_by_term: HashMap<&str, f64> = df
+    let weights: Vec<f64> = shared
         .iter()
-        .map(|(&term, &dft)| {
-            let w = if ln_max <= 0.0 {
+        .map(|c| {
+            if ln_max <= 0.0 {
                 1.0
             } else {
-                ((n as f64 / dft as f64).ln() / ln_max).clamp(0.0, 1.0)
-            };
-            (term, w)
+                ((n as f64 / c.papers.len() as f64).ln() / ln_max).clamp(0.0, 1.0)
+            }
         })
         .collect();
 
+    // Each paper's shared concepts, as indices into `shared`.
+    let mut by_paper: Vec<Vec<usize>> = vec![Vec::new(); n];
+    for (ci, concept) in shared.iter().enumerate() {
+        for paper in &concept.papers {
+            by_paper[paper_index[paper.as_str()]].push(ci);
+        }
+    }
+
     let mut relations = Vec::new();
-    for i in 0..papers.len() {
-        let a_terms: HashSet<&str> = terms_by_paper[i].iter().map(|s| s.as_str()).collect();
-        // `papers` is distinct by construction (grouping above), so every (i, j)
-        // with i < j is a pair of different papers — no self-edge guard needed.
-        for j in (i + 1)..papers.len() {
-            // `terms_by_paper[j]` is already deduplicated, so the filtered
-            // intersection is unique; sorting alone gives stable output.
-            let mut shared: Vec<&str> = terms_by_paper[j]
+    for i in 0..n {
+        let a: HashSet<usize> = by_paper[i].iter().copied().collect();
+        // `papers` is distinct by construction, so every (i, j) with i < j is a pair
+        // of different papers — no self-edge guard needed.
+        for j in (i + 1)..n {
+            let common: Vec<usize> = by_paper[j]
                 .iter()
-                .map(|s| s.as_str())
-                .filter(|t| a_terms.contains(t))
+                .copied()
+                .filter(|ci| a.contains(ci))
                 .collect();
-            shared.sort_unstable();
-            for term in shared {
-                let w = weight_by_term[term];
+            if common.is_empty() {
+                continue;
+            }
+            // Words of any phrase this pair shares; their own edges are subsumed.
+            let subsumed: HashSet<&str> = common
+                .iter()
+                .filter(|&&ci| shared[ci].kind == ConceptKind::Phrase)
+                .flat_map(|&ci| shared[ci].words())
+                .collect();
+            let mut edges: Vec<usize> = common
+                .into_iter()
+                .filter(|&ci| {
+                    shared[ci].kind == ConceptKind::Phrase
+                        || !subsumed.contains(shared[ci].id.as_str())
+                })
+                .collect();
+            edges.sort_by(|&x, &y| {
+                shared[x]
+                    .label
+                    .cmp(&shared[y].label)
+                    .then_with(|| shared[x].id.cmp(&shared[y].id))
+            });
+            for ci in edges {
+                let w = weights[ci];
                 if w >= threshold {
                     relations.push(ComputedRelation {
-                        from: papers[i].clone(),
-                        to: papers[j].clone(),
+                        from: papers[i].to_string(),
+                        to: papers[j].to_string(),
                         kind: RelationKind::CoAssertion {
-                            term: term.to_string(),
+                            term: shared[ci].label.clone(),
                             weight: w,
                         },
                     });
@@ -417,9 +437,9 @@ mod tests {
     /// `rare` (df 2 → weight 1.0), `mid` (df 3 → ~0.415), `common` (df 4 → 0.0).
     fn tfidf_corpus() -> Vec<(String, String)> {
         vec![
-            claim("2301.00001", "rare mid common"),
-            claim("2302.00002", "rare mid common"),
-            claim("2303.00003", "mid common"),
+            claim("2301.00001", "rare, mid, common"),
+            claim("2302.00002", "rare, mid, common"),
+            claim("2303.00003", "mid, common"),
             claim("2304.00004", "common"),
         ]
     }
@@ -487,8 +507,8 @@ mod tests {
     #[test]
     fn test_coassertion_sorted_deterministic() {
         let claims = vec![
-            claim("2301.00001", "Zebra apple mango."),
-            claim("2302.00002", "Mango zebra apple."),
+            claim("2301.00001", "Zebra, apple, mango."),
+            claim("2302.00002", "Mango, zebra, apple."),
         ];
         let terms: Vec<String> = compute_coassertion_relations(&claims, 1.0)
             .into_iter()
