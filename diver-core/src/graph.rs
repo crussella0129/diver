@@ -901,12 +901,103 @@ mod tests {
             fact("P2", "B", &["cs.CL"], &["Bob"]),
             fact("P3", "C", &["cs.LG"], &["Alice"]),
             fact("P4", "D", &["cs.LG"], &["Carol"]),
+            // P2–P5 share cs.CL and neither is a seed: the scoped variant must drop it.
+            fact("P5", "E", &["cs.CL"], &["Dave"]),
         ];
-        let full: Vec<ComputedRelation> = compute_relations(&facts)
-            .into_iter()
-            .filter(touches)
-            .collect();
+        let all = compute_relations(&facts);
+        assert!(
+            all.iter().any(|r| r.from == "P2" && r.to == "P5"),
+            "non-seed pair exists"
+        );
+        let full: Vec<ComputedRelation> = all.into_iter().filter(touches).collect();
         assert_eq!(compute_relations_touching(&facts, &seeds), full);
+    }
+
+    /// Naive co-assertion with none of the optimizations: every pair of papers, every
+    /// shared concept, subsumption, then the gate. Reference for the pre-filtering one.
+    fn naive_coassertion(claims: &[(String, String)], t: f64) -> Vec<ComputedRelation> {
+        let threshold = 1.0 - t.clamp(0.0, 1.0);
+        let mut papers: Vec<&str> = Vec::new();
+        for (p, _) in claims {
+            if !papers.contains(&p.as_str()) {
+                papers.push(p);
+            }
+        }
+        let n = papers.len();
+        let set = form_concepts(claims);
+        let ln_max = if n > 2 { (n as f64 / 2.0).ln() } else { 0.0 };
+        let mut out = Vec::new();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let mut shared: Vec<&Concept> = set
+                    .iter()
+                    .filter(|c| {
+                        c.papers.len() >= 2
+                            && c.papers.contains(papers[i])
+                            && c.papers.contains(papers[j])
+                    })
+                    .collect();
+                let subsumed: HashSet<&str> = shared
+                    .iter()
+                    .filter(|c| c.kind == ConceptKind::Phrase)
+                    .flat_map(|c| c.words())
+                    .collect();
+                shared
+                    .retain(|c| c.kind == ConceptKind::Phrase || !subsumed.contains(c.id.as_str()));
+                shared.sort_by(|a, b| a.label.cmp(&b.label).then(a.id.cmp(&b.id)));
+                for c in shared {
+                    let w = if ln_max <= 0.0 {
+                        1.0
+                    } else {
+                        ((n as f64 / c.papers.len() as f64).ln() / ln_max).clamp(0.0, 1.0)
+                    };
+                    if w >= threshold {
+                        out.push(ComputedRelation {
+                            from: papers[i].to_string(),
+                            to: papers[j].to_string(),
+                            kind: RelationKind::CoAssertion {
+                                term: c.label.clone(),
+                                weight: w,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn test_coassertion_matches_naive_reference() {
+        // Pre-filtering concepts by the gate must change no output — same edges, same
+        // order, same weights — across phrases at several document frequencies,
+        // singular/plural phrase forms, and a filler-headed phrase.
+        let corpus = [
+            claim(
+                "P1",
+                "The hidden state grows. Machine translation improves.",
+            ),
+            claim("P2", "A hidden state decays. Machine translation scales."),
+            claim("P3", "Each hidden state resets. Translation drifts."),
+            claim(
+                "P4",
+                "Two hidden states merge. Attention helps translation.",
+            ),
+            claim("P5", "Hidden states split. Attention aids."),
+            claim("P6", "A language model learns. Neural networks converge."),
+            claim(
+                "P7",
+                "The language model scales. A neural network generalizes.",
+            ),
+            claim("P8", "Recurrence limits speed."),
+        ];
+        for t in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            assert_eq!(
+                compute_coassertion_relations(&corpus, t),
+                naive_coassertion(&corpus, t),
+                "t={t}"
+            );
+        }
     }
 
     #[test]

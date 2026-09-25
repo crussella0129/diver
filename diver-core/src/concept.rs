@@ -500,11 +500,11 @@ mod tests {
         assert_eq!(network.forms.get("network"), Some(&1));
         assert_eq!(network.papers.len(), 2);
 
-        // A phrase needs two papers, however often one paper repeats it.
-        let one = form_concepts(&claims(&[(
-            "A",
-            "Denoising diffusion works. Denoising diffusion again.",
-        )]));
+        // A phrase needs two *papers*: two claims of one paper are not enough.
+        let one = form_concepts(&claims(&[
+            ("A", "Denoising diffusion works."),
+            ("A", "Denoising diffusion again."),
+        ]));
         assert!(one.get("denoising diffusion").is_none());
         let two = form_concepts(&claims(&[
             ("A", "Denoising diffusion works."),

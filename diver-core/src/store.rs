@@ -1582,6 +1582,15 @@ mod tests {
                 Some(current.as_str())
             );
         }
+
+        // And the converse: with a matching fingerprint there is no rebuild — a concept
+        // row deleted behind the store's back stays deleted, so reads use persisted
+        // state rather than re-forming concepts every time.
+        store
+            .conn
+            .execute("DELETE FROM concepts WHERE id = 'balloon'", [])
+            .unwrap();
+        assert!(store.resolve_concept("balloons").unwrap().is_none());
     }
 
     #[test]
@@ -1611,6 +1620,19 @@ mod tests {
             &["Attention spans vary. A transformer model scales."],
         );
         save(&store, "P4", &["The transformer model scales."]);
+        save(&store, "P5", &["Diffusion models converge."]);
+        // Twelve `<word> vortex` phrases, each shared by two papers: more than the cap.
+        for (i, word) in [
+            "arvex", "belzor", "cydran", "dovex", "elmar", "fornix", "gandor", "hexil", "ivrin",
+            "jolpar", "kespar", "lumen",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let claim = format!("The {word} vortex.");
+            save(&store, &format!("V{i}a"), &[&claim]);
+            save(&store, &format!("V{i}b"), &[&claim]);
+        }
         assert!(store.concept_count().unwrap() > 0);
 
         // Linked, not merged: narrower phrases for a term, broader terms for a phrase.
@@ -1624,9 +1646,19 @@ mod tests {
                 .contains(&"attention".to_string())
         );
 
-        // A stoplisted word points at the phrases it heads.
+        // A stoplisted word points at the phrases it heads, most papers first
+        // (`diffusion model` 3, `transformer model` 2 — not merely id order).
         let model = ids(store.concept_suggestions("model").unwrap());
         assert_eq!(&model[..2], &["diffusion model", "transformer model"]);
+
+        // Both lists are capped: 12 phrases contain `vortex`, and both return 10.
+        let vortex = ids(store.concepts_related_to("vortex").unwrap());
+        assert_eq!(vortex.len(), CONCEPT_LIST_CAP);
+        assert!(vortex.iter().all(|id| id.ends_with(" vortex")));
+        assert_eq!(
+            store.concept_suggestions("quantum vortex").unwrap().len(),
+            CONCEPT_LIST_CAP
+        );
 
         // Drive repair: with no concept containing every word, coverage ranks first.
         let partial = ids(store
@@ -1644,7 +1676,6 @@ mod tests {
             store.similar_concepts("atn").unwrap().is_empty(),
             "too short to guess"
         );
-        assert!(store.concept_suggestions("zzzz").unwrap().len() <= CONCEPT_LIST_CAP);
     }
 
     #[test]

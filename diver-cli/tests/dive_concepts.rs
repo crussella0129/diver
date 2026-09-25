@@ -60,10 +60,16 @@ fn test_cli_dive_concepts() {
 
     // Either inflection resolves; C only says `network`, which substring matching on
     // `networks` would miss.
+    // Assert on the *result* set, not bare ids: an id can also appear in another paper's
+    // related-papers line, which would let a missing result pass.
     let out = diver(&db, &["dive", "networks"]);
-    assert!(out.contains("Dive: network"), "{out}");
+    assert!(out.contains("Dive: network (term, 2 papers)"), "{out}");
     assert!(
-        out.contains("2302.00002") && out.contains("2303.00003"),
+        out.contains("\u{2022} A diffusion model denoises networks."),
+        "{out}"
+    );
+    assert!(
+        out.contains("\u{2022} Neural network training converges."),
         "{out}"
     );
     assert!(

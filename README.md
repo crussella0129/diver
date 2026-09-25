@@ -84,7 +84,7 @@ diver extract 2301.00001                 # persist this paper's assertions
 diver dive attention                     # explore (default temperature 0.5)
 diver dive "machine translation"         # a phrase concept
 diver dive attention --temperature 0.0   # only the most distinctive links
-diver dive attention --temperature 1.0   # every shared concept links
+diver dive attention --temperature 1.0   # every shared concept, minus words a shared phrase covers
 ```
 
 ## Claim extraction (`diver extract`)

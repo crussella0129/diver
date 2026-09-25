@@ -853,5 +853,22 @@ mod tests {
         assert_eq!(lines[2], "  2304.00004 \u{2014} shared author Ada");
         assert_eq!(lines.len(), 3, "the category-only paper is not listed");
         assert_eq!(format_related(&[], &titles), vec!["(no related papers)"]);
+
+        // At most five linked papers are listed; the rest are summarized.
+        let many: Vec<(String, RelationKind)> = (0..7)
+            .map(|i| (format!("2400.0000{i}"), co("attention", 0.5)))
+            .collect();
+        let lines = format_related(&many, &titles);
+        assert_eq!(lines.len(), 1 + DIVE_RELATED_CAP + 1);
+        assert_eq!(
+            lines.last().unwrap(),
+            "  (+2 more linked by concepts or authors)"
+        );
+
+        // A long query is echoed truncated, with an ellipsis.
+        let long = "attention ".repeat(20);
+        let echoed = &format_dive_unresolved(&long, true, &[], &[])[0];
+        assert_eq!(echoed.chars().count(), "Dive: ".len() + QUERY_ECHO_MAX + 1);
+        assert!(echoed.ends_with('\u{2026}'));
     }
 }
