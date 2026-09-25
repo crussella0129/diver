@@ -2,12 +2,12 @@
 
 <!-- sprint-loop-intent-v2 -->
 - **Intent ID:** INT-0020
-- **State:** active
+- **State:** realized
 - **Work evidence:** [Sprint 19 build plan](../sprints/s19/sprint-plans/build-plan.md) (T-1901 – T-1906)
-- **Completion evidence:** none
-- **Code evidence:** none
-- **Test evidence:** none
-- **Documentation evidence:** none
+- **Completion evidence:** [T-1901 – T-1906 completion](../work/completed-tasks.md#t-1901--sprint-19)
+- **Code evidence:** [diver-core/src/concept.rs](../../diver-core/src/concept.rs), [diver-core/src/store.rs](../../diver-core/src/store.rs), [diver-core/src/graph.rs](../../diver-core/src/graph.rs), [diver-core/src/display.rs](../../diver-core/src/display.rs), [diver-cli/src/main.rs](../../diver-cli/src/main.rs)
+- **Test evidence:** [Sprint 19 test report](../sprints/s19/sprint-tests/test-report.md), [proving-ground drive](../sprints/s19/sprint-tests/e2e-tests.md)
+- **Documentation evidence:** [README.md](../../README.md) (`## Concept exploration`), [documentation review](../sprints/s19/sprint-tests/documentation-review.md)
 
 ## Intent
 
@@ -275,3 +275,12 @@ across 26 folds.
 - 2026-09-24: `planned` → `active` (Sprint 19 build started; T-1901 first).
 - 2026-09-24: revised during the Sprint 19 proving-ground drive, still `active`. Adverb rule and generic-vocabulary additions (formation version 2), suggestion coverage ranking, a "did you mean" fallback, and grouped related papers recorded under Consequences; polysemy of word concepts recorded as a confirmed limitation.
 - 2026-09-24: revised after the Sprint 19 test critique, still `active`. Corrected the drive findings (five changes, not four; the no-searchable-words message is among them; the suggestion-ordering change is attributed to the plan's T-1903 clause, not criterion 2) and recorded the residual generic-vocabulary limitation.
+- 2026-09-24: `active` → `realized` (Sprint 19). Concepts are persisted, deterministic
+  and never stale: plural folding, folded classification, two-word phrases shared by 2+
+  papers, a freshness fingerprint over claims, formation version and stoplist digest.
+  `dive` resolves through them, suggests for unresolved terms, and co-assertion keys on
+  concepts with phrase subsumption. All seven criteria pass (163 tests, 0 failed; nine
+  mutation checks caught). Operated first on real corpora of 480 and 2,068 papers, which
+  forced five behaviour changes recorded under Consequences and a scale repair recorded
+  in INT-0024. Known limits carried forward: generic vocabulary is reduced, not removed;
+  word concepts are polysemous; the fold is a suffix heuristic.

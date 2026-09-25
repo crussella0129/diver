@@ -25,6 +25,8 @@
   - [INT-0022 Relation evaluation harness and gold set](intents/INT-0022-relation-evaluation-harness.md)
   - [INT-0023 Full-text evidence beyond abstracts](intents/INT-0023-full-text-evidence.md)
   - [INT-0024 Incremental graph materialization](intents/INT-0024-incremental-materialization.md)
+  - [INT-0025 A machine-readable interface to find and dive](intents/INT-0025-machine-readable-interface.md)
+  - [INT-0026 Concept explorer front end](intents/INT-0026-concept-explorer-front-end.md)
 - [Tasks](work/tasks.md)
 - [Completed tasks](work/completed-tasks.md)
 - [Sprint 0](sprints/s0/sprint-meta.md)

@@ -25,8 +25,10 @@ See the installed Sprint Loops `schemas/intent.md` contract before authoring one
 | [INT-0017](INT-0017-real-corpus-validation.md) | Persist and validate a real dive corpus | realized |
 | [INT-0018](INT-0018-coassertion-stoplist.md) | Reduce co-assertion noise with a common-word stoplist | realized |
 | [INT-0019](INT-0019-configurable-store-path.md) | Configurable store path for reproducible corpora | realized |
-| [INT-0020](INT-0020-first-class-concepts.md) | Concepts as first-class entities | active |
+| [INT-0020](INT-0020-first-class-concepts.md) | Concepts as first-class entities | realized |
 | [INT-0021](INT-0021-typed-epistemic-relations.md) | Typed epistemic relations between claims | proposed |
 | [INT-0022](INT-0022-relation-evaluation-harness.md) | Relation evaluation harness and gold set | proposed |
 | [INT-0023](INT-0023-full-text-evidence.md) | Full-text evidence beyond abstracts | proposed |
 | [INT-0024](INT-0024-incremental-materialization.md) | Incremental graph materialization | proposed |
+| [INT-0025](INT-0025-machine-readable-interface.md) | A machine-readable interface to find and dive | proposed |
+| [INT-0026](INT-0026-concept-explorer-front-end.md) | Concept explorer front end | proposed |
