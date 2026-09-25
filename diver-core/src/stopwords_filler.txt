@@ -3,25 +3,26 @@
 # of a phrase — `language model`, `attention mechanism` — never its modifier:
 # `model establishes` forms no phrase. Lines starting with `#` are comments.
 # Classification is by folded form; editing this file rebuilds persisted concepts.
-abs abstract achieve achieved achieves achieving addition additional additionally address addresses aim aims allow allowing allows analysis applications applied applies apply approach approaches art arxiv available
-based baseline baselines benchmark benchmarks
-capabilities capability challenge challenges change compared comparison complex component components comprehensive conditions consider considered consists contains context contributions
-data demonstrate demonstrated demonstrates design designed detail detailed develop developed different difficult doi
-edu effective effectiveness effects efficient empirical enable enabled enables establish evaluate evaluated evaluates evaluation example existing experiment experimental experiments explore extensive extensively
-feature features field find finding findings finds framework function functions
-gain gains goal goals
-help helps html
-idea impact important improve improved improvement improvements improves improving include includes including increase increased increases increasing input introduce introduced introduces investigate io issue issues
+able abs abstract access accurate achieve achieved achieves achieving adding addition additional additionally address addresses addressing adopt advance advancement advantage affect aim aims allow allowed allowing allows alone amount analyse analysis analyze appear applicable applications applied applies apply applying approach approaches arbitrary area argue arise art arxiv aspect assess associated assume assuming available avenue avoid
+based baseline baselines basic benchmark benchmarks beneficial benefit broad build built
+capabilities capability capable capture carry cause central certain challenge challenges challenging change choice clear combination combine comparable compare compared comparison complex component components comprehensive comprise concept conclude conclusion conditions conduct confirm consider considered considering consisting consists construct containing contains context contrast contribute contributions conventional convert counterpart create creating crucial
+data define demonstrate demonstrated demonstrates demonstrating depend describe description design designed desirable detail detailed determine develop developed developing difference different difficult direct discussion distinct doi
+edu effective effectiveness effects efficacy efficient empirical employ employing enable enabled enables enabling encourage end enhanced ensure ensuring essential establish established evaluate evaluated evaluates evaluation examine example exhibit existing experiment experimental experiments explain explanation exploit explore extending extensive extensively extent
+facilitate fact fail faster feature features field final find finding findings finds focused focusing found framework function functions fundamental future
+gain gains goal goals greater growing
+hand handle help helps hence highlight hope html
+idea identify illustrate impact implement implication importance important impressive improve improved improvement improvements improves improving include included includes including incorporate increase increased increases increasing indicate individual influence inherent initial input inspired integrate interest interesting introduce introduced introduces introducing introduction introductory investigate involve io issue issues
 key
-learn learned learning leverage leverages limited literature
-mechanism mechanisms method methods model models multiple
-net
-observe observed obtain obtained org outperform outperforms
-paper papers pdf perform performance performed performs practice problem problems process processes produce produced
+lack larger leading learn learned learning led leverage leverages leveraging limitation limited literature little
+maintaining major meaningful mechanism mechanisms method methods model models modern motivated multiple
+named nature necessary needed net notable numerous
+observe observed obtain obtained occur offering operate opportunity org original outperform outperforms overall overcome overview
+paper papers past pdf perform performance performed performing performs persist perspective place play popular possibility powerful practice presence presented previous primary problem problems procedure process processes produce produced progress promising properly providing publicly purpose
 quality
-related report reports represent representation representations represents require required requires research result results reveal reveals
-scenario scenarios score scores setting settings showing solution solutions solve solves solving specific standard state studies study success successful survey system systems
-task tasks technique techniques test testing tests thorough train trained training
-understand understanding utilize
-validate validated
-working
+raise reducing regarding related relationship relevant reliable relying remarkable removing report reports represent representation representations represented representing represents require required requires requiring research respect result results reveal reveals revolutionized role
+satisfy scenario scenarios scheme score scores serve setting settings share showing significantly smaller solution solutions solve solves solving specific standard start state strong struggle studied studies study substantial success successful suffer sufficient suggest suitable suited summarize superior superiority surpass survey system systems
+tackle tailored targeted task tasks technique techniques tend test tested testing tests thereby thorough thought train trained training trivial type
+understand understanding understood unique unlike usage useful utilize
+validate validated variant variety verify version view
+wide working
+yield

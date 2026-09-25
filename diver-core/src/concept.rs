@@ -20,7 +20,7 @@ use std::sync::LazyLock;
 
 /// Bump whenever the formation rules in this module change in code. Persisted
 /// concepts are rebuilt when this, the stoplists' digest, or the stored claims change.
-pub const CONCEPT_FORMATION_VERSION: u32 = 1;
+pub const CONCEPT_FORMATION_VERSION: u32 = 2;
 
 /// Common words: never concepts, and they break phrases.
 const COMMON_WORDS: &str = include_str!("stopwords_common.txt");
@@ -87,13 +87,33 @@ pub fn fold(token: &str) -> String {
     token.to_string()
 }
 
+/// Nouns ending in `ly` that are not adverbs, so [`is_adverb`] must not treat them as
+/// filler.
+const LY_NOUNS: &[&str] = &[
+    "anomaly",
+    "assembly",
+    "butterfly",
+    "family",
+    "monopoly",
+    "multiply",
+    "supply",
+];
+
+/// Adverbs (`typically`, `previously`, `efficiently`) are never concepts: in abstract
+/// prose they carry emphasis, not content, yet a stoplist can never enumerate them
+/// all. A folded key of 6+ characters ending in `ly` is an adverb unless it is one of
+/// the few `ly` nouns in [`LY_NOUNS`].
+fn is_adverb(key: &str) -> bool {
+    key.len() >= 6 && key.ends_with("ly") && !LY_NOUNS.contains(&key)
+}
+
 /// The category of a lowercased token: the category of its folded key, common
-/// taking precedence over filler.
+/// taking precedence over filler; adverbs are filler.
 pub fn category(token: &str) -> TokenCategory {
     let key = fold(token);
     if COMMON.contains(&key) {
         TokenCategory::Common
-    } else if FILLER.contains(&key) {
+    } else if FILLER.contains(&key) || is_adverb(&key) {
         TokenCategory::Filler
     } else {
         TokenCategory::Content
