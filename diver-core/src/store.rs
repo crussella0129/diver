@@ -43,6 +43,21 @@ fn rank_and_cap(list: &mut Vec<ConceptSummary>) {
     list.truncate(CONCEPT_LIST_CAP);
 }
 
+/// Levenshtein distance between two strings, by characters.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut cur = vec![i + 1; b.len() + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let substitute = prev[j] + usize::from(ca != *cb);
+            cur[j + 1] = substitute.min(prev[j + 1] + 1).min(cur[j] + 1);
+        }
+        prev = cur;
+    }
+    prev[b.len()]
+}
+
 fn parse_kind(kind: &str) -> Result<ConceptKind> {
     ConceptKind::parse(kind).ok_or_else(|| anyhow!("unknown concept kind {kind:?} in database"))
 }
@@ -731,8 +746,11 @@ impl Store {
     }
 
     /// Concepts to offer when `query` does not resolve: those whose id contains every
-    /// folded query token as a whole word, or, if there are none, any of them.
-    /// Ordered by paper count descending then id, at most [`CONCEPT_LIST_CAP`].
+    /// folded query token as a whole word, ordered by paper count descending then id;
+    /// or, if there are none, those containing any of them, ordered first by how many
+    /// query tokens they contain — so `quantum error correction` offers the phrases
+    /// `error correction` and `quantum error` before the bare word `error`. At most
+    /// [`CONCEPT_LIST_CAP`].
     pub fn concept_suggestions(&self, query: &str) -> Result<Vec<ConceptSummary>> {
         self.ensure_concepts_fresh()?;
         let Some(key) = query_key(query) else {
@@ -740,20 +758,64 @@ impl Store {
         };
         let tokens: Vec<&str> = key.split(' ').collect();
         let all = self.concept_summaries()?;
-        let has = |c: &ConceptSummary, t: &str| c.id.split(' ').any(|w| w == t);
+        let matched = |c: &ConceptSummary| {
+            tokens
+                .iter()
+                .filter(|t| c.id.split(' ').any(|w| w == **t))
+                .count()
+        };
         let mut out: Vec<ConceptSummary> = all
             .iter()
-            .filter(|c| c.id != key && tokens.iter().all(|t| has(c, t)))
+            .filter(|c| c.id != key && matched(c) == tokens.len())
             .cloned()
             .collect();
-        if out.is_empty() {
-            out = all
-                .into_iter()
-                .filter(|c| c.id != key && tokens.iter().any(|t| has(c, t)))
-                .collect();
+        if !out.is_empty() {
+            rank_and_cap(&mut out);
+            return Ok(out);
         }
-        rank_and_cap(&mut out);
-        Ok(out)
+        let mut scored: Vec<(usize, ConceptSummary)> = all
+            .into_iter()
+            .filter(|c| c.id != key)
+            .map(|c| (matched(&c), c))
+            .filter(|(m, _)| *m > 0)
+            .collect();
+        scored.sort_by(|(ma, a), (mb, b)| {
+            mb.cmp(ma)
+                .then(b.paper_count.cmp(&a.paper_count))
+                .then(a.id.cmp(&b.id))
+        });
+        scored.truncate(CONCEPT_LIST_CAP);
+        Ok(scored.into_iter().map(|(_, c)| c).collect())
+    }
+
+    /// Concepts spelled like `query`, for a "did you mean" when nothing contains it:
+    /// concept ids within edit distance 1 of the normalized query (2 when it is
+    /// longer than 6 characters), closest first, then by paper count and id. Empty for
+    /// queries shorter than 4 characters, where a guess would be noise. At most
+    /// [`CONCEPT_LIST_CAP`].
+    pub fn similar_concepts(&self, query: &str) -> Result<Vec<ConceptSummary>> {
+        self.ensure_concepts_fresh()?;
+        let Some(key) = query_key(query) else {
+            return Ok(Vec::new());
+        };
+        let len = key.chars().count();
+        if len < 4 {
+            return Ok(Vec::new());
+        }
+        let max_distance = if len > 6 { 2 } else { 1 };
+        let mut scored: Vec<(usize, ConceptSummary)> = self
+            .concept_summaries()?
+            .into_iter()
+            .map(|c| (edit_distance(&key, &c.id), c))
+            .filter(|(d, _)| *d > 0 && *d <= max_distance)
+            .collect();
+        scored.sort_by(|(da, a), (db, b)| {
+            da.cmp(db)
+                .then(b.paper_count.cmp(&a.paper_count))
+                .then(a.id.cmp(&b.id))
+        });
+        scored.truncate(CONCEPT_LIST_CAP);
+        Ok(scored.into_iter().map(|(_, c)| c).collect())
     }
 
     /// How many concepts the stored claims form (after ensuring freshness). `0` for an

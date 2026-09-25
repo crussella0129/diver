@@ -96,6 +96,67 @@ pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
     relations
 }
 
+/// Everything linking a dive node to one other paper, grouped from its raw edges.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RelatedPaper {
+    pub arxiv_id: String,
+    /// Co-asserted concepts with their weights, strongest first.
+    pub concepts: Vec<(String, f64)>,
+    pub authors: Vec<String>,
+    pub categories: Vec<String>,
+}
+
+impl RelatedPaper {
+    /// Linked only by a shared arXiv category — taxonomy coordinates, not content.
+    pub fn category_only(&self) -> bool {
+        self.concepts.is_empty() && self.authors.is_empty()
+    }
+
+    fn concept_weight(&self) -> f64 {
+        self.concepts.iter().map(|(_, w)| w).sum()
+    }
+}
+
+/// Group a node's raw relations by the other paper and rank them: papers linked by
+/// shared concepts first (by total concept weight), then by shared authors, then
+/// papers sharing only a category. Ties break by arXiv id, so the order is stable.
+pub fn group_related(related: &[(String, RelationKind)]) -> Vec<RelatedPaper> {
+    let mut by_paper: Vec<RelatedPaper> = Vec::new();
+    let mut index: HashMap<&str, usize> = HashMap::new();
+    for (other, kind) in related {
+        let i = *index.entry(other.as_str()).or_insert_with(|| {
+            by_paper.push(RelatedPaper {
+                arxiv_id: other.clone(),
+                concepts: Vec::new(),
+                authors: Vec::new(),
+                categories: Vec::new(),
+            });
+            by_paper.len() - 1
+        });
+        let entry = &mut by_paper[i];
+        match kind {
+            RelationKind::CoAssertion { term, weight } => {
+                entry.concepts.push((term.clone(), *weight))
+            }
+            RelationKind::SharedAuthor(name) => entry.authors.push(name.clone()),
+            RelationKind::SharedCategory(code) => entry.categories.push(code.clone()),
+        }
+    }
+    for paper in &mut by_paper {
+        paper
+            .concepts
+            .sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    }
+    by_paper.sort_by(|a, b| {
+        b.concept_weight()
+            .total_cmp(&a.concept_weight())
+            .then_with(|| b.authors.len().cmp(&a.authors.len()))
+            .then_with(|| b.categories.len().cmp(&a.categories.len()))
+            .then_with(|| a.arxiv_id.cmp(&b.arxiv_id))
+    });
+    by_paper
+}
+
 /// Collect the items, keeping the first occurrence of each and dropping later
 /// duplicates while preserving order.
 fn dedup_preserve_order<'a>(items: impl Iterator<Item = &'a str>) -> Vec<&'a str> {

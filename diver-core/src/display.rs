@@ -1,9 +1,11 @@
+use std::collections::{BTreeMap, HashMap};
+
 use owo_colors::OwoColorize;
 
 use crate::assertion::{Assertion, Supported};
-use crate::concept::ConceptKind;
+use crate::concept::{ConceptKind, query_key};
 use crate::fact::SourceFact;
-use crate::graph::{DiveNode, RelationKind};
+use crate::graph::{DiveNode, RelatedPaper, RelationKind, group_related};
 use crate::id::ArxivCategory;
 use crate::model::Paper;
 use crate::store::{ConceptInfo, ConceptSummary, SearchResult, StoredAssertion};
@@ -132,8 +134,16 @@ pub fn display_stored_assertions(arxiv_id: &str, assertions: &[StoredAssertion])
     }
 }
 
-/// How many related papers to list per dive node before summarizing the rest.
-const DIVE_RELATED_CAP: usize = 10;
+/// How many related papers to list per dive node. Papers sharing only an arXiv
+/// category are never listed one by one — they are counted, since at corpus scale a
+/// shared category links hundreds of papers and says nothing about their content.
+const DIVE_RELATED_CAP: usize = 5;
+
+/// How many co-asserted concepts to name per related paper before summarizing.
+const DIVE_CONCEPTS_PER_PAPER: usize = 3;
+
+/// Longest query echoed back verbatim.
+const QUERY_ECHO_MAX: usize = 80;
 
 /// How many related entries overflow the display cap, if any (`None` when the
 /// count fits within `cap`).
@@ -141,19 +151,22 @@ fn related_overflow(count: usize, cap: usize) -> Option<usize> {
     (count > cap).then(|| count - cap)
 }
 
+/// A co-assertion weight for display. A surviving edge always has weight > 0; show a
+/// tiny positive weight as "<0.01" rather than rounding it to a misleading "0.00".
+fn format_weight(weight: f64) -> String {
+    if weight > 0.0 && weight < 0.005 {
+        "<0.01".to_string()
+    } else {
+        format!("{weight:.2}")
+    }
+}
+
 fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
         RelationKind::SharedAuthor(name) => format!("shared author {name}"),
         RelationKind::CoAssertion { term, weight } => {
-            // A surviving edge always has weight > 0; show a tiny positive weight as
-            // "<0.01" rather than rounding it to a misleading "0.00" at 2 decimals.
-            let shown = if *weight > 0.0 && *weight < 0.005 {
-                "<0.01".to_string()
-            } else {
-                format!("{weight:.2}")
-            };
-            format!("co-asserts {term} (w={shown})")
+            format!("co-asserts {term} (w={})", format_weight(*weight))
         }
     }
 }
@@ -163,6 +176,17 @@ fn plural(n: usize, word: &str) -> String {
         format!("{n} {word}")
     } else {
         format!("{n} {word}s")
+    }
+}
+
+/// A user query as echoed in messages: trimmed and length-capped.
+fn echo_query(term: &str) -> String {
+    let trimmed = term.trim();
+    if trimmed.chars().count() > QUERY_ECHO_MAX {
+        let head: String = trimmed.chars().take(QUERY_ECHO_MAX).collect();
+        format!("{head}…")
+    } else {
+        trimmed.to_string()
     }
 }
 
@@ -196,27 +220,112 @@ pub fn format_dive_header(info: &ConceptInfo, related: &[ConceptSummary]) -> Vec
     lines
 }
 
-/// Lines for a term that resolves to no concept: with no concepts at all, the
-/// `diver extract` hint; otherwise a not-a-concept notice and the concepts that
-/// contain the term, when there are any. Plain text, no styling.
+/// Lines describing a dive node's related papers, grouped per paper and ranked by
+/// [`group_related`]: a one-line summary of how many papers are linked by shared
+/// concepts, by shared authors, and by category alone, then up to
+/// [`DIVE_RELATED_CAP`] papers linked by concepts or authors, each with its title and
+/// its strongest shared concepts. Category-only papers are counted, never listed.
+/// `titles` maps arXiv ids to titles. Plain text, no styling.
+pub fn format_related(
+    related: &[(String, RelationKind)],
+    titles: &HashMap<&str, &str>,
+) -> Vec<String> {
+    let grouped = group_related(related);
+    if grouped.is_empty() {
+        return vec!["(no related papers)".to_string()];
+    }
+
+    let via_concepts = grouped.iter().filter(|r| !r.concepts.is_empty()).count();
+    let via_authors = grouped
+        .iter()
+        .filter(|r| r.concepts.is_empty() && !r.authors.is_empty())
+        .count();
+    let category_only: Vec<&RelatedPaper> = grouped.iter().filter(|r| r.category_only()).collect();
+
+    let mut parts = Vec::new();
+    if via_concepts > 0 {
+        parts.push(format!("{via_concepts} by shared concepts"));
+    }
+    if via_authors > 0 {
+        parts.push(format!("{via_authors} by shared authors only"));
+    }
+    if !category_only.is_empty() {
+        // Name the categories doing the linking, most common first.
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for r in &category_only {
+            for code in &r.categories {
+                *counts.entry(code.as_str()).or_insert(0) += 1;
+            }
+        }
+        let mut codes: Vec<(&str, usize)> = counts.into_iter().collect();
+        codes.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        let names: Vec<&str> = codes.iter().take(3).map(|(c, _)| *c).collect();
+        parts.push(format!(
+            "{} sharing only a category ({})",
+            category_only.len(),
+            names.join(", ")
+        ));
+    }
+    let mut lines = vec![format!("Related: {}", parts.join("; "))];
+
+    let listed: Vec<&RelatedPaper> = grouped.iter().filter(|r| !r.category_only()).collect();
+    for r in listed.iter().take(DIVE_RELATED_CAP) {
+        let title = titles
+            .get(r.arxiv_id.as_str())
+            .map(|t| truncate_title(t, 56))
+            .unwrap_or_default();
+        let mut reasons = Vec::new();
+        if !r.concepts.is_empty() {
+            let mut named: Vec<String> = r
+                .concepts
+                .iter()
+                .take(DIVE_CONCEPTS_PER_PAPER)
+                .map(|(c, w)| format!("{c} ({})", format_weight(*w)))
+                .collect();
+            if let Some(more) = related_overflow(r.concepts.len(), DIVE_CONCEPTS_PER_PAPER) {
+                named.push(format!("+{more} more"));
+            }
+            reasons.push(format!("shares {}", named.join(", ")));
+        }
+        for author in &r.authors {
+            reasons.push(relation_reason(&RelationKind::SharedAuthor(author.clone())));
+        }
+        lines.push(format!(
+            "  {}  {title} \u{2014} {}",
+            r.arxiv_id,
+            reasons.join("; ")
+        ));
+    }
+    if let Some(more) = related_overflow(listed.len(), DIVE_RELATED_CAP) {
+        lines.push(format!("  (+{more} more linked by concepts or authors)"));
+    }
+    lines
+}
+
+/// Lines for a term that resolves to no concept. With no concepts at all, the
+/// `diver extract` hint; for a query with no searchable words, say so; otherwise a
+/// not-a-concept notice followed by the concepts that contain the term or, failing
+/// that, concepts spelled similarly. Plain text, no styling.
 pub fn format_dive_unresolved(
     term: &str,
     has_concepts: bool,
     suggestions: &[ConceptSummary],
+    similar: &[ConceptSummary],
 ) -> Vec<String> {
-    let mut lines = vec![format!("Dive: {term}")];
+    let shown = echo_query(term);
+    let mut lines = vec![format!("Dive: {shown}")];
     if !has_concepts {
         lines.push(
             "  No concepts yet: run `diver extract <id>` or `diver extract --all` first."
                 .to_string(),
         );
-    } else if suggestions.is_empty() {
+    } else if query_key(term).is_none() {
         lines.push(format!(
-            "  '{term}' is not a concept in this corpus, and no concept contains it."
+            "  '{shown}' has no searchable words (only common words, numbers or short tokens)."
         ));
-    } else {
+    } else if !suggestions.is_empty() {
         lines.push(format!(
-            "  '{term}' is not a concept in this corpus. Concepts containing it:"
+            "  '{shown}' is not a concept in this corpus. Concepts containing it:"
         ));
         for c in suggestions {
             lines.push(format!(
@@ -225,13 +334,34 @@ pub fn format_dive_unresolved(
                 plural(c.paper_count, "paper")
             ));
         }
+    } else if !similar.is_empty() {
+        lines.push(format!(
+            "  '{shown}' is not a concept in this corpus. Did you mean:"
+        ));
+        for c in similar {
+            lines.push(format!(
+                "    {} ({})",
+                c.label,
+                plural(c.paper_count, "paper")
+            ));
+        }
+    } else {
+        lines.push(format!(
+            "  '{shown}' is not a concept in this corpus, and nothing contains or resembles it."
+        ));
     }
     lines
 }
 
 /// Display a resolved `diver dive`: the concept header, then each asserting paper,
-/// its claims about the concept, and its related papers (bounded per node).
-pub fn display_dive_concept(info: &ConceptInfo, related: &[ConceptSummary], nodes: &[DiveNode]) {
+/// its claims about the concept, and its related papers (grouped and bounded per
+/// node). `facts` supplies the related papers' titles.
+pub fn display_dive_concept(
+    info: &ConceptInfo,
+    related: &[ConceptSummary],
+    nodes: &[DiveNode],
+    facts: &[SourceFact],
+) {
     let header = format_dive_header(info, related);
     println!("{}", header[0].bold());
     for line in &header[1..] {
@@ -239,32 +369,30 @@ pub fn display_dive_concept(info: &ConceptInfo, related: &[ConceptSummary], node
     }
     println!();
 
+    let titles: HashMap<&str, &str> = facts
+        .iter()
+        .map(|f| (f.arxiv_id.as_str(), f.title.as_str()))
+        .collect();
     for node in nodes {
         println!("{}  {}", node.arxiv_id.bold(), node.title);
         for claim in &node.claims {
             println!("  \u{2022} {claim}");
         }
-        if node.related.is_empty() {
-            println!("    {}", "(no related papers)".dimmed());
-        } else {
-            println!("    {}", "Related:".dimmed());
-            for (other, kind) in node.related.iter().take(DIVE_RELATED_CAP) {
-                println!(
-                    "      {}",
-                    format!("{other} \u{2014} {}", relation_reason(kind)).dimmed()
-                );
-            }
-            if let Some(more) = related_overflow(node.related.len(), DIVE_RELATED_CAP) {
-                println!("      {}", format!("(+{more} more)").dimmed());
-            }
+        for line in format_related(&node.related, &titles) {
+            println!("    {}", line.dimmed());
         }
         println!();
     }
 }
 
 /// Display a `diver dive` whose term resolves to no concept.
-pub fn display_dive_unresolved(term: &str, has_concepts: bool, suggestions: &[ConceptSummary]) {
-    let lines = format_dive_unresolved(term, has_concepts, suggestions);
+pub fn display_dive_unresolved(
+    term: &str,
+    has_concepts: bool,
+    suggestions: &[ConceptSummary],
+    similar: &[ConceptSummary],
+) {
+    let lines = format_dive_unresolved(term, has_concepts, suggestions, similar);
     println!("{}", lines[0].bold());
     for line in &lines[1..] {
         println!("{line}");

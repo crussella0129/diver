@@ -225,7 +225,7 @@ async fn main() -> Result<()> {
                         temperature,
                     ));
                     let nodes = build_dive(&facts, &asserting, &relations);
-                    display::display_dive_concept(&info, &related, &nodes);
+                    display::display_dive_concept(&info, &related, &nodes, &facts);
                 }
                 None => {
                     let has_concepts = store.concept_count()? > 0;
@@ -234,7 +234,17 @@ async fn main() -> Result<()> {
                     } else {
                         Vec::new()
                     };
-                    display::display_dive_unresolved(&concept, has_concepts, &suggestions);
+                    let similar = if has_concepts && suggestions.is_empty() {
+                        store.similar_concepts(&concept)?
+                    } else {
+                        Vec::new()
+                    };
+                    display::display_dive_unresolved(
+                        &concept,
+                        has_concepts,
+                        &suggestions,
+                        &similar,
+                    );
                 }
             }
         }
