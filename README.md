@@ -72,8 +72,8 @@ with `t` in `[0.0, 1.0]` (default **0.5**):
   every shared concept, except words already covered by a phrase the same two papers
   share.
 
-Only co-assertion edges are affected; structural (category/author) edges are always
-shown.
+Only co-assertion edges are affected; structural (category/author) edges do not depend
+on temperature.
 
 Because `dive` reads the persisted assertions, run `diver extract` on the papers
 you care about first — a paper with no extracted assertions won't appear as a

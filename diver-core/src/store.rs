@@ -1620,7 +1620,7 @@ mod tests {
             &["Attention spans vary. A transformer model scales."],
         );
         save(&store, "P4", &["The transformer model scales."]);
-        save(&store, "P5", &["Diffusion models converge."]);
+        save(&store, "P5", &["The transformer model converges."]);
         // Twelve `<word> vortex` phrases, each shared by two papers: more than the cap.
         for (i, word) in [
             "arvex", "belzor", "cydran", "dovex", "elmar", "fornix", "gandor", "hexil", "ivrin",
@@ -1646,10 +1646,11 @@ mod tests {
                 .contains(&"attention".to_string())
         );
 
-        // A stoplisted word points at the phrases it heads, most papers first
-        // (`diffusion model` 3, `transformer model` 2 — not merely id order).
+        // A stoplisted word points at the phrases it heads, most papers first:
+        // `transformer model` (3) before `diffusion model` (2) — the reverse of id order,
+        // so this fails if the paper-count key is dropped.
         let model = ids(store.concept_suggestions("model").unwrap());
-        assert_eq!(&model[..2], &["diffusion model", "transformer model"]);
+        assert_eq!(&model[..2], &["transformer model", "diffusion model"]);
 
         // Both lists are capped: 12 phrases contain `vortex`, and both return 10.
         let vortex = ids(store.concepts_related_to("vortex").unwrap());
