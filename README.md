@@ -38,7 +38,9 @@ what a concept is — and rebuilt automatically whenever claims change:
   (`language model`). A common-word stoplist and a research-filler stoplist decide this.
 - **Unresolved terms suggest.** A term that is not a concept says so and lists the
   concepts containing it: `diver dive model` offers `diffusion models`,
-  `transformer model`, …
+  `transformer model`, … For a multi-word query, concepts covering more of its words
+  come first (`quantum error correction` offers `error correction`, `quantum error`),
+  and a misspelling gets a *did you mean* (`atention` → `attention`).
 - **No substring matching.** Earlier versions matched any claim *containing* the text,
   so `gan` matched "or**gan**ized". Concepts are whole words, which also means
   derivational variants are distinct: `attention` does not reach `attentional`.
@@ -49,8 +51,15 @@ what a concept is — and rebuilt automatically whenever claims change:
 - **co-assertion** — the two papers' claims share a concept, so `dive` links papers by
   *what they assert*, not only their metadata. Each edge names the concept and is
   weighted by its inverse document frequency across the corpus (rarer concepts score
-  higher), shown as `co-asserts <concept> (w=…)`. When two papers share a phrase, they
-  are linked by the phrase alone — not additionally by each of its words.
+  higher). When two papers share a phrase, they are linked by the phrase alone — not
+  additionally by each of its words.
+
+Each paper in a dive lists its related papers **grouped and ranked**: first a summary
+(`Related: 12 by shared concepts; 1 by shared authors only; 90 sharing only a category
+(cs.LG, cs.CL)`), then the top five papers linked by concepts or authors, with titles
+and their strongest shared concepts (`shares positional encoding (0.83), lstm (0.80)`).
+Papers that only share an arXiv category are counted, never listed — at corpus scale a
+category links hundreds of papers and says nothing about what they claim.
 
 ### Temperature (`--temperature`)
 
