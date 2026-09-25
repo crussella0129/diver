@@ -47,6 +47,23 @@ pub struct DiveNode {
 /// [`RelationKind::SharedAuthor`] edge per shared author, for each unordered pair
 /// (`i < j`). No self-edges (pairs with the same `arxiv_id` are skipped).
 pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
+    structural_relations(facts, None)
+}
+
+/// [`compute_relations`] restricted to pairs with at least one paper in `seeds`: the
+/// same edges, oriented the same way, for exactly the papers a `dive` shows. O(seeds ×
+/// papers) instead of O(papers²).
+pub fn compute_relations_touching(
+    facts: &[SourceFact],
+    seeds: &HashSet<&str>,
+) -> Vec<ComputedRelation> {
+    structural_relations(facts, Some(seeds))
+}
+
+fn structural_relations(
+    facts: &[SourceFact],
+    seeds: Option<&HashSet<&str>>,
+) -> Vec<ComputedRelation> {
     // Deduplicate each paper's category codes and authors once. arXiv author lists
     // are not deduplicated upstream (unlike categories), so without this a repeated
     // author would yield duplicate edges.
@@ -58,6 +75,10 @@ pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
         .iter()
         .map(|f| dedup_preserve_order(f.authors.iter().map(|s| s.as_str())))
         .collect();
+    let in_scope: Vec<bool> = facts
+        .iter()
+        .map(|f| seeds.is_none_or(|s| s.contains(f.arxiv_id.as_str())))
+        .collect();
 
     let mut relations = Vec::new();
 
@@ -67,7 +88,7 @@ pub fn compute_relations(facts: &[SourceFact]) -> Vec<ComputedRelation> {
         let a_authors: HashSet<&str> = authors[i].iter().copied().collect();
 
         for j in (i + 1)..facts.len() {
-            if facts[i].arxiv_id == facts[j].arxiv_id {
+            if !(in_scope[i] || in_scope[j]) || facts[i].arxiv_id == facts[j].arxiv_id {
                 continue;
             }
 
@@ -174,33 +195,46 @@ pub fn build_dive(
     asserting: &[(String, String)],
     relations: &[ComputedRelation],
 ) -> Vec<DiveNode> {
+    // Index once: titles by id, and each relation under both endpoints (in relation
+    // order), so a node costs its degree rather than a scan of every edge.
+    let titles: HashMap<&str, &str> = facts
+        .iter()
+        .map(|f| (f.arxiv_id.as_str(), f.title.as_str()))
+        .collect();
+    let mut touching: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (k, r) in relations.iter().enumerate() {
+        touching.entry(r.from.as_str()).or_default().push(k);
+        touching.entry(r.to.as_str()).or_default().push(k);
+    }
+
     let mut nodes: Vec<DiveNode> = Vec::new();
+    let mut node_index: HashMap<&str, usize> = HashMap::new();
 
     for (arxiv_id, claim) in asserting {
-        if let Some(existing) = nodes.iter_mut().find(|n| &n.arxiv_id == arxiv_id) {
-            existing.claims.push(claim.clone());
+        if let Some(&i) = node_index.get(arxiv_id.as_str()) {
+            nodes[i].claims.push(claim.clone());
             continue;
         }
 
-        let title = facts
-            .iter()
-            .find(|f| &f.arxiv_id == arxiv_id)
-            .map(|f| f.title.clone())
+        let title = titles
+            .get(arxiv_id.as_str())
+            .map(|t| t.to_string())
             .unwrap_or_else(|| arxiv_id.clone());
 
-        let related = relations
-            .iter()
-            .filter_map(|r| {
-                if &r.from == arxiv_id {
-                    Some((r.to.clone(), r.kind.clone()))
-                } else if &r.to == arxiv_id {
-                    Some((r.from.clone(), r.kind.clone()))
-                } else {
-                    None
-                }
+        let related = touching
+            .get(arxiv_id.as_str())
+            .map(|ks| {
+                ks.iter()
+                    .map(|&k| {
+                        let r = &relations[k];
+                        let other = if &r.from == arxiv_id { &r.to } else { &r.from };
+                        (other.clone(), r.kind.clone())
+                    })
+                    .collect()
             })
-            .collect();
+            .unwrap_or_default();
 
+        node_index.insert(arxiv_id.as_str(), nodes.len());
         nodes.push(DiveNode {
             arxiv_id: arxiv_id.clone(),
             title,
@@ -246,6 +280,25 @@ pub fn compute_coassertion_relations(
     claims: &[(String, String)],
     temperature: f64,
 ) -> Vec<ComputedRelation> {
+    coassertion_relations(claims, temperature, None)
+}
+
+/// [`compute_coassertion_relations`] restricted to pairs with at least one paper in
+/// `seeds`: identical edges (weights still use corpus-wide document frequency) for
+/// exactly the papers a `dive` shows. O(seeds × papers) pairs instead of O(papers²).
+pub fn compute_coassertion_relations_touching(
+    claims: &[(String, String)],
+    temperature: f64,
+    seeds: &HashSet<&str>,
+) -> Vec<ComputedRelation> {
+    coassertion_relations(claims, temperature, Some(seeds))
+}
+
+fn coassertion_relations(
+    claims: &[(String, String)],
+    temperature: f64,
+    seeds: Option<&HashSet<&str>>,
+) -> Vec<ComputedRelation> {
     // A non-finite temperature (NaN/inf) has no meaningful clamp: `f64::clamp`
     // passes NaN straight through, which would make `threshold` NaN and silently
     // drop every edge (`w >= NaN` is always false). Treat any non-finite value as
@@ -268,23 +321,29 @@ pub fn compute_coassertion_relations(
     }
     let n = papers.len();
 
-    // Only concepts shared by two or more papers can link anything.
-    let set = form_concepts(claims);
-    let shared: Vec<&Concept> = set.iter().filter(|c| c.papers.len() >= 2).collect();
-
-    // Normalized IDF weight per shared concept. With N <= 2 every shared concept has
+    // Normalized IDF weight per concept. With N <= 2 every shared concept has
     // df == N (no discriminating power) and ln(N/2) == 0, so weight 1.0.
     let ln_max = if n > 2 { (n as f64 / 2.0).ln() } else { 0.0 };
-    let weights: Vec<f64> = shared
+    let weight_of = |df: usize| {
+        if ln_max <= 0.0 {
+            1.0
+        } else {
+            ((n as f64 / df as f64).ln() / ln_max).clamp(0.0, 1.0)
+        }
+    };
+
+    // Only concepts shared by two or more papers can link anything, and only those
+    // clearing the gate can emit an edge. Filtering on the gate first changes no
+    // output: a phrase's papers are a subset of each of its words' papers, so its
+    // weight is never below theirs, and any phrase that would subsume a word edge
+    // clearing the gate clears it too.
+    let set = form_concepts(claims);
+    let (shared, weights): (Vec<&Concept>, Vec<f64>) = set
         .iter()
-        .map(|c| {
-            if ln_max <= 0.0 {
-                1.0
-            } else {
-                ((n as f64 / c.papers.len() as f64).ln() / ln_max).clamp(0.0, 1.0)
-            }
-        })
-        .collect();
+        .filter(|c| c.papers.len() >= 2)
+        .map(|c| (c, weight_of(c.papers.len())))
+        .filter(|(_, w)| *w >= threshold)
+        .unzip();
 
     // Each paper's shared concepts, as indices into `shared`.
     let mut by_paper: Vec<Vec<usize>> = vec![Vec::new(); n];
@@ -294,12 +353,23 @@ pub fn compute_coassertion_relations(
         }
     }
 
+    let in_scope: Vec<bool> = papers
+        .iter()
+        .map(|p| seeds.is_none_or(|s| s.contains(p)))
+        .collect();
+
     let mut relations = Vec::new();
     for i in 0..n {
+        if by_paper[i].is_empty() {
+            continue;
+        }
         let a: HashSet<usize> = by_paper[i].iter().copied().collect();
         // `papers` is distinct by construction, so every (i, j) with i < j is a pair
         // of different papers — no self-edge guard needed.
         for j in (i + 1)..n {
+            if !(in_scope[i] || in_scope[j]) || by_paper[j].is_empty() {
+                continue;
+            }
             let common: Vec<usize> = by_paper[j]
                 .iter()
                 .copied()
@@ -329,16 +399,14 @@ pub fn compute_coassertion_relations(
             });
             for ci in edges {
                 let w = weights[ci];
-                if w >= threshold {
-                    relations.push(ComputedRelation {
-                        from: papers[i].to_string(),
-                        to: papers[j].to_string(),
-                        kind: RelationKind::CoAssertion {
-                            term: shared[ci].label.clone(),
-                            weight: w,
-                        },
-                    });
-                }
+                relations.push(ComputedRelation {
+                    from: papers[i].to_string(),
+                    to: papers[j].to_string(),
+                    kind: RelationKind::CoAssertion {
+                        term: shared[ci].label.clone(),
+                        weight: w,
+                    },
+                });
             }
         }
     }

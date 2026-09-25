@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -6,7 +8,9 @@ use diver_core::client::ArxivClient;
 use diver_core::display;
 use diver_core::extract::LlmExtractor;
 use diver_core::fact::SourceFact;
-use diver_core::graph::{build_dive, compute_coassertion_relations, compute_relations};
+use diver_core::graph::{
+    build_dive, compute_coassertion_relations_touching, compute_relations_touching,
+};
 use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
 use diver_core::store::Store;
@@ -219,10 +223,14 @@ async fn main() -> Result<()> {
                     let asserting = store.claims_for_concept(&info.id)?;
                     let related = store.concepts_related_to(&info.id)?;
                     let facts = store.list()?;
-                    let mut relations = compute_relations(&facts);
-                    relations.extend(compute_coassertion_relations(
+                    // Only edges touching the papers this dive shows are needed.
+                    let seeds: HashSet<&str> =
+                        asserting.iter().map(|(id, _)| id.as_str()).collect();
+                    let mut relations = compute_relations_touching(&facts, &seeds);
+                    relations.extend(compute_coassertion_relations_touching(
                         &store.all_claims()?,
                         temperature,
+                        &seeds,
                     ));
                     let nodes = build_dive(&facts, &asserting, &relations);
                     display::display_dive_concept(&info, &related, &nodes, &facts);
