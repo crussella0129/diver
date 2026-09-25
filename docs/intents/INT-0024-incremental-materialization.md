@@ -50,6 +50,18 @@ Schedule this intent when **any** of the following is observed and recorded:
 Until then, the O(n²) query-time implementation is the **correct** design, and
 optimizing it is a mistake.
 
+**Trigger 1 fired, and was answered without materialization (Sprint 19).** On a
+2,068-paper corpus of real arXiv papers, `diver dive` took 3.5–6 s, and 12.3 s at
+`--temperature 1.0`. Profiling showed the cost was avoidable rather than inherent:
+`build_dive` scanned every edge once per node, and edges were computed for all 2.1M
+paper pairs though a dive shows only pairs touching its seed papers. Indexing edges by
+endpoint and computing only seed-touching pairs — verified identical to the full
+computation against an independent reference — brought dives to 0.6–1.5 s. The
+query-time design stands; this intent stays `proposed`, and its triggers should be
+re-measured against the *scoped* implementation. At 2,068 papers the remaining fixed
+cost per dive is concept formation over all claims for IDF (~0.25 s) and structural
+edges for the seeds (~0.3 s).
+
 ## Acceptance criteria
 
 1. Ingest updates stored edges incrementally; dive reads them without pairwise
@@ -111,3 +123,4 @@ mid-implementation would be expensive.
 
 ## Transition history
 - 2026-09-02: created as `proposed` during Sprint 18 roadmap realignment, to record an intentional deferral with explicit, measurable trigger conditions rather than leaving it as undocumented folklore.
+- 2026-09-24: trigger 1 (dive > 2 s) observed at 2,068 papers during the Sprint 19 proving-ground drive and resolved by scoped query-time computation rather than materialization; still `proposed`, finding recorded above.

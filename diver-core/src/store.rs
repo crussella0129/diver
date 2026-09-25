@@ -1452,6 +1452,201 @@ mod tests {
         assert!(store.papers_asserting("anything").unwrap().is_empty());
     }
 
+    fn save(store: &Store, paper: &str, claims: &[&str]) {
+        let supported: Vec<Assertion<Supported>> = claims
+            .iter()
+            .map(|c| supported(c, &[&c.to_lowercase()]))
+            .collect();
+        store.save_assertions(paper, "v1", &supported).unwrap();
+    }
+
+    #[test]
+    fn test_concept_resolution() {
+        let store = Store::open_in_memory().unwrap();
+        let tables = count(
+            &store,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' \
+             AND name IN ('concepts', 'concept_forms', 'assertion_concepts', 'meta')",
+        );
+        assert_eq!(tables, 4);
+
+        save(
+            &store,
+            "2301.00001",
+            &[
+                "Diffusion models generate images.",
+                "Recurrence limits speed.",
+            ],
+        );
+        save(&store, "2302.00002", &["A diffusion model denoises."]);
+
+        // The query is folded: `Diffusion Models` resolves to the phrase concept.
+        let info = store.resolve_concept("Diffusion Models").unwrap().unwrap();
+        assert_eq!(info.id, "diffusion model");
+        assert_eq!(info.kind, ConceptKind::Phrase);
+        assert_eq!(info.paper_count, 2);
+        assert!(info.forms.contains(&("diffusion model".to_string(), 1)));
+        assert!(info.forms.contains(&("diffusion models".to_string(), 1)));
+        assert!(store.resolve_concept("teleportation").unwrap().is_none());
+
+        // Exactly the linked claims, ordered; the unrelated claim in paper 1 is excluded.
+        assert_eq!(
+            store.claims_for_concept(&info.id).unwrap(),
+            vec![
+                (
+                    "2301.00001".to_string(),
+                    "Diffusion models generate images.".to_string()
+                ),
+                (
+                    "2302.00002".to_string(),
+                    "A diffusion model denoises.".to_string()
+                ),
+            ]
+        );
+
+        // No substring matching.
+        save(&store, "2303.00003", &["An organized network grows."]);
+        assert!(store.papers_asserting("gan").unwrap().is_empty());
+        assert!(store.papers_asserting("net").unwrap().is_empty());
+        assert_eq!(store.papers_asserting("network").unwrap().len(), 1);
+
+        // Links cascade when their assertions are deleted.
+        assert!(count(&store, "SELECT COUNT(*) FROM assertion_concepts") > 0);
+        store.conn.execute("DELETE FROM assertions", []).unwrap();
+        assert_eq!(count(&store, "SELECT COUNT(*) FROM assertion_concepts"), 0);
+    }
+
+    #[test]
+    fn test_concepts_freshness() {
+        let store = Store::open_in_memory().unwrap();
+        save(&store, "A", &["Zeppelin airships float."]);
+        assert_eq!(
+            store
+                .resolve_concept("zeppelin")
+                .unwrap()
+                .unwrap()
+                .paper_count,
+            1
+        );
+
+        // A later write is visible on the next read, with no rebuild call.
+        save(&store, "B", &["Zeppelin variants vary.", "Balloons rise."]);
+        assert_eq!(
+            store
+                .resolve_concept("zeppelin")
+                .unwrap()
+                .unwrap()
+                .paper_count,
+            2
+        );
+
+        // Replacements that remove the last claims forming a concept remove it.
+        save(&store, "B", &["Balloons rise."]);
+        save(&store, "A", &[]);
+        assert!(store.resolve_concept("zeppelin").unwrap().is_none());
+
+        // A fingerprint differing only in formation version, or only in the rules
+        // digest, forces a rebuild: delete a concept row behind the store's back, forge
+        // the stored fingerprint, and the next read restores the concept.
+        let current = store.concept_fingerprint().unwrap();
+        assert_eq!(
+            store.stored_concept_fingerprint().unwrap().as_deref(),
+            Some(current.as_str())
+        );
+        let parts: Vec<&str> = current.splitn(3, ':').collect();
+        let forged_version = format!(
+            "v{}:{}:{}",
+            CONCEPT_FORMATION_VERSION + 1,
+            parts[1],
+            parts[2]
+        );
+        let forged_digest = format!("{}:{:016x}:{}", parts[0], 0, parts[2]);
+        for forged in [forged_version, forged_digest] {
+            store
+                .conn
+                .execute("DELETE FROM concepts WHERE id = 'balloon'", [])
+                .unwrap();
+            store
+                .conn
+                .execute(
+                    "UPDATE meta SET value = ?1 WHERE key = ?2",
+                    rusqlite::params![forged, CONCEPT_FINGERPRINT_KEY],
+                )
+                .unwrap();
+            assert!(
+                store.resolve_concept("balloons").unwrap().is_some(),
+                "{forged}"
+            );
+            assert_eq!(
+                store.stored_concept_fingerprint().unwrap().as_deref(),
+                Some(current.as_str())
+            );
+        }
+    }
+
+    #[test]
+    fn test_concept_navigation() {
+        let empty = Store::open_in_memory().unwrap();
+        assert_eq!(empty.concept_count().unwrap(), 0);
+        assert!(empty.concept_suggestions("model").unwrap().is_empty());
+
+        let stopwords = Store::open_in_memory().unwrap();
+        save(&stopwords, "A", &["The results show that it is."]);
+        assert_eq!(stopwords.concept_count().unwrap(), 0);
+
+        let store = Store::open_in_memory().unwrap();
+        save(
+            &store,
+            "P1",
+            &["The attention mechanism aids. Diffusion models generate images."],
+        );
+        save(
+            &store,
+            "P2",
+            &["An attention mechanism aids. A diffusion model denoises."],
+        );
+        save(
+            &store,
+            "P3",
+            &["Attention spans vary. A transformer model scales."],
+        );
+        save(&store, "P4", &["The transformer model scales."]);
+        assert!(store.concept_count().unwrap() > 0);
+
+        // Linked, not merged: narrower phrases for a term, broader terms for a phrase.
+        let ids = |v: Vec<ConceptSummary>| v.into_iter().map(|c| c.id).collect::<Vec<_>>();
+        assert!(
+            ids(store.concepts_related_to("attention").unwrap())
+                .contains(&"attention mechanism".to_string())
+        );
+        assert!(
+            ids(store.concepts_related_to("attention mechanism").unwrap())
+                .contains(&"attention".to_string())
+        );
+
+        // A stoplisted word points at the phrases it heads.
+        let model = ids(store.concept_suggestions("model").unwrap());
+        assert_eq!(&model[..2], &["diffusion model", "transformer model"]);
+
+        // Drive repair: with no concept containing every word, coverage ranks first.
+        let partial = ids(store
+            .concept_suggestions("quantum attention mechanism")
+            .unwrap());
+        let phrase = partial.iter().position(|id| id == "attention mechanism");
+        let word = partial.iter().position(|id| id == "attention");
+        assert!(phrase.unwrap() < word.unwrap(), "{partial:?}");
+
+        // Drive repair: a misspelling finds the concept by edit distance.
+        assert!(
+            ids(store.similar_concepts("atention").unwrap()).contains(&"attention".to_string())
+        );
+        assert!(
+            store.similar_concepts("atn").unwrap().is_empty(),
+            "too short to guess"
+        );
+        assert!(store.concept_suggestions("zzzz").unwrap().len() <= CONCEPT_LIST_CAP);
+    }
+
     #[test]
     fn test_papers_asserting_wildcards_inert() {
         // Replaces the LIKE-escaping test: resolution is by concept, not substring, so

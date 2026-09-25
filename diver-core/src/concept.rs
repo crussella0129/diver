@@ -385,4 +385,248 @@ mod tests {
             ],
         );
     }
+
+    fn claims(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
+        pairs
+            .iter()
+            .map(|(p, c)| (p.to_string(), c.to_string()))
+            .collect()
+    }
+
+    fn phrase_ids(claim: &str) -> Vec<String> {
+        phrase_candidates(claim)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect()
+    }
+
+    #[test]
+    fn test_stoplist_categories() {
+        let common: HashSet<&str> = listed_words(COMMON_WORDS).collect();
+        let filler: HashSet<&str> = listed_words(FILLER_WORDS).collect();
+        assert!(common.is_disjoint(&filler), "the two stoplists overlap");
+        for w in [
+            "https", "http", "www", "github", "com", "propose", "provides", "recent", "show",
+            "simple", "widely", "work", "works", "the", "of", "with",
+        ] {
+            assert_eq!(category(w), TokenCategory::Common, "{w} should be common");
+        }
+        for w in ["model", "mechanism", "learning", "score"] {
+            assert_eq!(category(w), TokenCategory::Filler, "{w} should be filler");
+        }
+        // Drive repair: adverbs are filler by rule; a few `ly` nouns are not adverbs.
+        for w in ["typically", "previously", "efficiently", "highly"] {
+            assert_eq!(category(w), TokenCategory::Filler, "adverb {w}");
+        }
+        for w in ["anomaly", "anomalies", "family", "families", "assembly"] {
+            assert_eq!(category(w), TokenCategory::Content, "noun {w}");
+        }
+    }
+
+    #[test]
+    fn test_fold() {
+        for (plural, singular) in [
+            ("networks", "network"),
+            ("rnns", "rnn"),
+            ("families", "family"),
+            ("classes", "class"),
+            ("studies", "study"),
+        ] {
+            assert_eq!(fold(plural), singular, "{plural}");
+        }
+        // Precedence: `ies` before `s` (not `familie`), `sses` before `s` (not `classe`).
+        assert_ne!(fold("families"), "familie");
+        assert_ne!(fold("classes"), "classe");
+        for unchanged in [
+            "analysis",
+            "corpus",
+            "process",
+            "loss",
+            "gas",
+            "attention",
+            "semantics",
+            "metrics",
+        ] {
+            assert_eq!(fold(unchanged), unchanged);
+        }
+    }
+
+    #[test]
+    fn test_folded_classification_consistent() {
+        for (a, b) in [
+            ("state", "states"),
+            ("detail", "details"),
+            ("input", "inputs"),
+            ("part", "parts"),
+            ("effect", "effects"),
+            ("condition", "conditions"),
+            ("network", "networks"),
+        ] {
+            assert_eq!(category(a), category(b), "{a} vs {b}");
+        }
+    }
+
+    #[test]
+    fn test_phrase_rule() {
+        assert_eq!(phrase_ids("a language model"), vec!["language model"]);
+        assert_eq!(
+            phrase_ids("machine translation"),
+            vec!["machine translation"]
+        );
+        assert_eq!(phrase_ids("an encoder-decoder"), vec!["encoder decoder"]);
+        // Each input has a break between every pair of words, so none forms a phrase.
+        for (broken, why) in [
+            ("model establishes", "filler cannot modify"),
+            ("attention of translation", "common word"),
+            ("project page https", "common and web tokens"),
+            ("gpt 4 model", "short numeric token"),
+            ("50 layers", "numeric token"),
+            ("translation, attention", "punctuation"),
+        ] {
+            assert!(phrase_ids(broken).is_empty(), "{broken:?}: {why}");
+        }
+    }
+
+    #[test]
+    fn test_concept_formation() {
+        // Inflections are one term concept, carrying every surface form.
+        let set = form_concepts(&claims(&[
+            ("A", "Neural networks learn."),
+            ("B", "A network generalizes."),
+        ]));
+        let network = set.get("network").expect("network concept");
+        assert_eq!(network.kind, ConceptKind::Term);
+        assert_eq!(network.forms.get("networks"), Some(&1));
+        assert_eq!(network.forms.get("network"), Some(&1));
+        assert_eq!(network.papers.len(), 2);
+
+        // A phrase needs two papers, however often one paper repeats it.
+        let one = form_concepts(&claims(&[(
+            "A",
+            "Denoising diffusion works. Denoising diffusion again.",
+        )]));
+        assert!(one.get("denoising diffusion").is_none());
+        let two = form_concepts(&claims(&[
+            ("A", "Denoising diffusion works."),
+            ("B", "We study denoising diffusion."),
+        ]));
+        assert_eq!(
+            two.get("denoising diffusion").map(|c| c.kind),
+            Some(ConceptKind::Phrase)
+        );
+
+        // A phrase is distinct from its words; no derivational or head merge.
+        let set = form_concepts(&claims(&[
+            (
+                "A",
+                "Machine translation improves. The attention mechanism helps.",
+            ),
+            (
+                "B",
+                "Machine translation scales. An attention mechanism is attentional.",
+            ),
+        ]));
+        for id in [
+            "machine translation",
+            "machine",
+            "translation",
+            "attention",
+            "attentional",
+            "attention mechanism",
+        ] {
+            assert!(set.get(id).is_some(), "missing concept {id}");
+        }
+
+        // Label: most frequent form, ties to the lexicographically smallest.
+        let set = form_concepts(&claims(&[
+            ("A", "Networks. Networks. Networks. Network."),
+            ("B", "Graphs. Graph."),
+        ]));
+        assert_eq!(set.get("network").unwrap().label, "networks");
+        assert_eq!(set.get("graph").unwrap().label, "graph");
+    }
+
+    #[test]
+    fn test_formation_invariants() {
+        let input = claims(&[
+            ("P1", "The hidden state grows."),
+            ("P2", "A hidden state decays."),
+            ("P3", "Each hidden state resets."),
+            ("P4", "Two hidden states merge."),
+            ("P5", "Hidden states split."),
+            ("P6", "Machine translation improves."),
+            ("P7", "Machine translation scales."),
+            ("P8", "Translation drifts."),
+        ]);
+        let set = form_concepts(&input);
+
+        // A phrase's papers are a subset of each constituent term's papers.
+        for phrase in set.iter().filter(|c| c.kind == ConceptKind::Phrase) {
+            for word in phrase.words() {
+                if category(word) == TokenCategory::Content {
+                    let term = set.get(word).expect("constituent term exists");
+                    assert!(phrase.papers.is_subset(&term.papers), "{}", phrase.id);
+                }
+            }
+        }
+
+        // Deterministic, and independent of input order once indices are remapped.
+        let again = form_concepts(&input);
+        assert_eq!(again, set);
+        assert_eq!(format!("{again:?}"), format!("{set:?}"));
+        let n = input.len();
+        let reversed: Vec<_> = input.iter().rev().cloned().collect();
+        let mut rset = form_concepts(&reversed);
+        for c in rset.concepts.values_mut() {
+            c.claims = c.claims.iter().map(|i| n - 1 - i).collect();
+        }
+        assert_eq!(rset, set);
+
+        // Traceable: each concept records exactly the claims and papers containing it.
+        for concept in set.iter() {
+            for (i, (paper, claim)) in input.iter().enumerate() {
+                let contains = match concept.kind {
+                    ConceptKind::Term => significant_terms(claim)
+                        .iter()
+                        .any(|t| fold(t) == concept.id),
+                    ConceptKind::Phrase => phrase_ids(claim).contains(&concept.id),
+                };
+                assert_eq!(
+                    concept.claims.contains(&i),
+                    contains,
+                    "{} / {i}",
+                    concept.id
+                );
+                if contains {
+                    assert!(concept.papers.contains(paper));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_query_key() {
+        assert_eq!(
+            query_key("The Diffusion Models").as_deref(),
+            Some("diffusion model")
+        );
+        assert_eq!(query_key("NETWORKS").as_deref(), Some("network"));
+        for empty in ["", "the of", "50", "   "] {
+            assert_eq!(query_key(empty), None, "{empty:?}");
+        }
+    }
+
+    #[test]
+    fn test_digest_words() {
+        let base = digest_words("a b\r\nc", "x");
+        assert_eq!(base, digest_words("a  b\nc", "x"), "whitespace-insensitive");
+        assert_eq!(
+            base,
+            digest_words("# a comment\na b c", "x"),
+            "comments ignored"
+        );
+        assert_ne!(base, digest_words("a b c d", "x"), "added word");
+        assert_ne!(base, digest_words("a b", "x"), "removed word");
+        assert_ne!(base, digest_words("a b", "c x"), "word moved between lists");
+    }
 }

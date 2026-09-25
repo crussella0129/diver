@@ -231,6 +231,28 @@ across 26 folds.
 - **`Store::papers_asserting` keeps its signature** but resolves through concepts. Its
   former LIKE-escaping test tested behaviour that no longer exists and is replaced by
   one asserting that wildcard characters match nothing.
+- **Proving-ground findings (Sprint 19, real corpora of 480 and 2,068 papers across
+  16 fields).** Driving the real binary changed four things, each recorded here because
+  it changes behaviour the plan fixed:
+  - *Adverbs are filler by rule* (folded key of 6+ characters ending in `ly`, except a
+    short noun allowlist such as `anomaly`, `family`), and the filler list grew by 236
+    generic modifiers, verbs and nouns observed creating false co-assertion edges
+    (`wide range` linked 17 unrelated papers at the default temperature). Formation
+    version 2. Domain words that merely span fields (`entropy`, `graph`, `network`)
+    are deliberately kept: they are the cross-field bridges this intent exists to find.
+  - *Suggestions rank by coverage.* When no concept contains every query word, the
+    fallback ranks by how many query words a concept contains before paper count, so
+    `quantum error correction` offers `error correction` and `quantum error` before
+    `error`. This refines criterion 2's ordering, which ranked by paper count alone.
+  - *Misspellings get a "did you mean".* When nothing contains the query, concepts within
+    edit distance 1 (2 for 7+ characters) are offered: `atention` → `attention`.
+  - *Related papers are grouped and ranked,* concepts first, then authors; papers sharing
+    only an arXiv category are counted, never listed. At 480 papers every node had 700+
+    related papers and the first ten were always category links.
+- **Known limitation confirmed at scale: word concepts are polysemous.** `code` spans
+  genetic code, error-correcting codes and source code across 150 papers. Phrases
+  disambiguate cleanly (`surface code`: 5 of 5 quantum error-correction papers), and a
+  word's `narrower:` list reads as its sense inventory. Sense separation is future work.
 - Two synthetic test fixtures that were bags of content words (`"rare mid common"`,
   `"zebra apple mango"`) now legitimately form shared phrases, and gain comma separators;
   their assertions are unchanged.
@@ -242,3 +264,4 @@ across 26 folds.
 - 2026-09-21: revised after Sprint 19 plan critique round 1, still `planned` (no state change). Tokens are classified by folded form, which restores the phrase-subsumption invariant the critique showed failing under raw-form classification; folding order fixed as `ies`, `sses`, `s` with the `bias`/`biases` limitation recorded; the refinement of INT-0014's `t = 1.0` endpoint recorded; the freshness fingerprint gains a stoplist digest; arXiv taxonomy vocabulary narrowed out of the Intent and recorded as a deferred alternative.
 - 2026-09-21: revised after Sprint 19 plan critique round 2, still `planned` (no state change). The folding consequence overclaimed ("misses a merge rather than making a wrong one"); corrected with an `ics` exclusion — preferring a missed merge over a derivational one, per this chapter's own principle — and an explicit list of the remaining missed-merge and wrong-merge classes.
 - 2026-09-24: `planned` → `active` (Sprint 19 build started; T-1901 first).
+- 2026-09-24: revised during the Sprint 19 proving-ground drive, still `active`. Adverb rule and generic-vocabulary additions (formation version 2), suggestion coverage ranking, a "did you mean" fallback, and grouped related papers recorded under Consequences; polysemy of word concepts recorded as a confirmed limitation.

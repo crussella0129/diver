@@ -790,4 +790,155 @@ mod tests {
             "t < 0 clamps to 0.0"
         );
     }
+
+    fn edges_between(rels: &[ComputedRelation], a: &str, b: &str) -> Vec<String> {
+        coassertion_terms(rels)
+            .into_iter()
+            .filter(|(f, t, _)| f == a && t == b)
+            .map(|(_, _, term)| term)
+            .collect()
+    }
+
+    #[test]
+    fn test_coassertion_concepts() {
+        // Inflections are one concept, and the edge names its label (most frequent form).
+        let rels = compute_coassertion_relations(
+            &[
+                claim("2301.00001", "Networks. Networks."),
+                claim("2302.00002", "Network."),
+            ],
+            1.0,
+        );
+        assert_eq!(
+            edges_between(&rels, "2301.00001", "2302.00002"),
+            vec!["networks"]
+        );
+
+        // A shared phrase is one edge; its word `diffusion` is subsumed.
+        let rels = compute_coassertion_relations(
+            &[
+                claim("2301.00001", "Diffusion models generate images."),
+                claim("2302.00002", "A diffusion model denoises."),
+            ],
+            1.0,
+        );
+        assert_eq!(
+            edges_between(&rels, "2301.00001", "2302.00002"),
+            vec!["diffusion model"]
+        );
+
+        // Subsumption is per pair and independent of temperature; the gate still
+        // applies to a pair that shares only the word.
+        let corpus = [
+            claim("A", "Machine translation improves."),
+            claim("B", "Machine translation scales."),
+            claim("C", "Translation drifts."),
+            claim("D", "Recurrence limits speed."),
+        ];
+        for t in [0.0, 0.5, 1.0] {
+            let rels = compute_coassertion_relations(&corpus, t);
+            assert_eq!(
+                edges_between(&rels, "A", "B"),
+                vec!["machine translation"],
+                "t={t}"
+            );
+        }
+        // `translation` has df 3 of N 4: weight ln(4/3)/ln(2) ≈ 0.42, so only t = 1.0.
+        assert_eq!(
+            edges_between(&compute_coassertion_relations(&corpus, 1.0), "A", "C"),
+            vec!["translation"]
+        );
+        assert!(edges_between(&compute_coassertion_relations(&corpus, 0.0), "A", "C").is_empty());
+    }
+
+    #[test]
+    fn test_coassertion_monotonic_with_phrases() {
+        let corpus = [
+            claim("P1", "The hidden state grows."),
+            claim("P2", "A hidden state decays."),
+            claim("P3", "Each hidden state resets."),
+            claim("P4", "Two hidden states merge."),
+            claim("P5", "Hidden states split."),
+            claim("P6", "Machine translation improves. Attention helps."),
+            claim("P7", "Machine translation scales. Attention aids."),
+            claim("P8", "Translation drifts."),
+        ];
+        let at = |t| -> HashSet<(String, String, String)> {
+            coassertion_terms(&compute_coassertion_relations(&corpus, t))
+                .into_iter()
+                .collect()
+        };
+        let (cold, warm, hot) = (at(0.0), at(0.5), at(1.0));
+        assert!(cold.is_subset(&warm) && warm.is_subset(&hot));
+        assert!(hot.len() > cold.len(), "temperature admits more edges here");
+    }
+
+    #[test]
+    fn test_touching_variants_match_full() {
+        let corpus = [
+            claim("P1", "Machine translation improves."),
+            claim("P2", "Machine translation scales."),
+            claim("P3", "Translation drifts under attention."),
+            claim("P4", "Attention spans vary."),
+            claim("P5", "Recurrence limits speed."),
+        ];
+        let seeds: HashSet<&str> = ["P1", "P4"].into_iter().collect();
+        let touches =
+            |r: &ComputedRelation| seeds.contains(r.from.as_str()) || seeds.contains(r.to.as_str());
+        for t in [0.0, 0.5, 1.0] {
+            let full: Vec<ComputedRelation> = compute_coassertion_relations(&corpus, t)
+                .into_iter()
+                .filter(touches)
+                .collect();
+            assert_eq!(
+                compute_coassertion_relations_touching(&corpus, t, &seeds),
+                full
+            );
+        }
+
+        let facts = vec![
+            fact("P1", "A", &["cs.CL"], &["Alice"]),
+            fact("P2", "B", &["cs.CL"], &["Bob"]),
+            fact("P3", "C", &["cs.LG"], &["Alice"]),
+            fact("P4", "D", &["cs.LG"], &["Carol"]),
+        ];
+        let full: Vec<ComputedRelation> = compute_relations(&facts)
+            .into_iter()
+            .filter(touches)
+            .collect();
+        assert_eq!(compute_relations_touching(&facts, &seeds), full);
+    }
+
+    #[test]
+    fn test_group_related_ranking() {
+        let co = |term: &str, weight| RelationKind::CoAssertion {
+            term: term.to_string(),
+            weight,
+        };
+        let related = vec![
+            (
+                "X".to_string(),
+                RelationKind::SharedCategory("cs.LG".into()),
+            ),
+            ("Y".to_string(), co("attention", 0.5)),
+            (
+                "Y".to_string(),
+                RelationKind::SharedCategory("cs.LG".into()),
+            ),
+            ("Z".to_string(), RelationKind::SharedAuthor("Bob".into())),
+            ("W".to_string(), co("diffusion", 0.9)),
+            ("W".to_string(), co("attention", 0.2)),
+        ];
+        let grouped = group_related(&related);
+        let order: Vec<&str> = grouped.iter().map(|r| r.arxiv_id.as_str()).collect();
+        // Concepts by total weight (W 1.1, Y 0.5), then authors (Z), then category (X).
+        assert_eq!(order, vec!["W", "Y", "Z", "X"]);
+        assert_eq!(
+            grouped[0].concepts[0].0, "diffusion",
+            "strongest concept first"
+        );
+        assert_eq!(grouped[1].categories, vec!["cs.LG"]);
+        assert!(grouped[3].category_only());
+        assert!(!grouped[2].category_only());
+    }
 }

@@ -290,11 +290,12 @@ pub fn format_related(
         for author in &r.authors {
             reasons.push(relation_reason(&RelationKind::SharedAuthor(author.clone())));
         }
-        lines.push(format!(
-            "  {}  {title} \u{2014} {}",
-            r.arxiv_id,
-            reasons.join("; ")
-        ));
+        let lead = if title.is_empty() {
+            r.arxiv_id.clone()
+        } else {
+            format!("{}  {title}", r.arxiv_id)
+        };
+        lines.push(format!("  {lead} \u{2014} {}", reasons.join("; ")));
     }
     if let Some(more) = related_overflow(listed.len(), DIVE_RELATED_CAP) {
         lines.push(format!("  (+{more} more linked by concepts or authors)"));
@@ -761,5 +762,96 @@ mod tests {
     fn test_display_collect_empty() {
         let msg = "No papers found.";
         assert_eq!(msg, "No papers found.");
+    }
+
+    #[test]
+    fn test_format_dive_concept() {
+        let summary = |id: &str, kind, paper_count| ConceptSummary {
+            id: id.to_string(),
+            label: id.to_string(),
+            kind,
+            paper_count,
+        };
+
+        // Term header: label, kind, reach, forms, narrower phrases.
+        let term = ConceptInfo {
+            id: "network".into(),
+            label: "networks".into(),
+            kind: ConceptKind::Term,
+            paper_count: 6,
+            forms: vec![("networks".into(), 5), ("network".into(), 5)],
+        };
+        let lines =
+            format_dive_header(&term, &[summary("neural networks", ConceptKind::Phrase, 4)]);
+        assert_eq!(lines[0], "Dive: networks (term, 6 papers)");
+        assert_eq!(lines[1], "  forms: networks \u{00d7}5, network \u{00d7}5");
+        assert_eq!(lines[2], "  narrower: neural networks (4)");
+
+        // Phrase header: broader constituent terms.
+        let phrase = ConceptInfo {
+            id: "attention mechanism".into(),
+            label: "attention mechanism".into(),
+            kind: ConceptKind::Phrase,
+            paper_count: 1,
+            forms: vec![("attention mechanism".into(), 1)],
+        };
+        let lines = format_dive_header(&phrase, &[summary("attention", ConceptKind::Term, 6)]);
+        assert_eq!(lines[0], "Dive: attention mechanism (phrase, 1 paper)");
+        assert_eq!(lines[2], "  broader: attention (6)");
+
+        // Unresolved: suggestions, then "did you mean", then the empty-corpus hint.
+        let with = format_dive_unresolved(
+            "model",
+            true,
+            &[summary("diffusion model", ConceptKind::Phrase, 6)],
+            &[],
+        );
+        assert!(with[1].contains("'model' is not a concept") && with[1].contains("containing"));
+        assert_eq!(with[2], "    diffusion model (6 papers)");
+        let similar = format_dive_unresolved(
+            "atention",
+            true,
+            &[],
+            &[summary("attention", ConceptKind::Term, 35)],
+        );
+        assert!(similar[1].contains("Did you mean"));
+        assert_eq!(similar[2], "    attention (35 papers)");
+        let none = format_dive_unresolved("zyxw", true, &[], &[]);
+        assert!(none[1].contains("nothing contains or resembles it"));
+        let stop = format_dive_unresolved("the", true, &[], &[]);
+        assert!(stop[1].contains("no searchable words"));
+        let empty = format_dive_unresolved("anything", false, &[], &[]);
+        assert!(empty[1].contains("diver extract"));
+
+        // Related: one summary line; category-only papers counted, never listed.
+        let co = |term: &str, weight| RelationKind::CoAssertion {
+            term: term.to_string(),
+            weight,
+        };
+        let related = vec![
+            ("2302.00002".to_string(), co("attention", 0.83)),
+            (
+                "2303.00003".to_string(),
+                RelationKind::SharedCategory("cs.LG".into()),
+            ),
+            (
+                "2304.00004".to_string(),
+                RelationKind::SharedAuthor("Ada".into()),
+            ),
+        ];
+        let titles: HashMap<&str, &str> = [("2302.00002", "Paper B")].into_iter().collect();
+        let lines = format_related(&related, &titles);
+        assert_eq!(
+            lines[0],
+            "Related: 1 by shared concepts; 1 by shared authors only; \
+             1 sharing only a category (cs.LG)"
+        );
+        assert_eq!(
+            lines[1],
+            "  2302.00002  Paper B \u{2014} shares attention (0.83)"
+        );
+        assert_eq!(lines[2], "  2304.00004 \u{2014} shared author Ada");
+        assert_eq!(lines.len(), 3, "the category-only paper is not listed");
+        assert_eq!(format_related(&[], &titles), vec!["(no related papers)"]);
     }
 }
