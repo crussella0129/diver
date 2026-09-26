@@ -1,11 +1,14 @@
+use std::collections::{BTreeMap, HashMap};
+
 use owo_colors::OwoColorize;
 
 use crate::assertion::{Assertion, Supported};
+use crate::concept::{ConceptKind, query_key};
 use crate::fact::SourceFact;
-use crate::graph::{DiveNode, RelationKind};
+use crate::graph::{DiveNode, RelatedPaper, RelationKind, group_related};
 use crate::id::ArxivCategory;
 use crate::model::Paper;
-use crate::store::{SearchResult, StoredAssertion};
+use crate::store::{ConceptInfo, ConceptSummary, SearchResult, StoredAssertion};
 
 pub fn display_results(papers: &[Paper], total: u32) {
     if papers.is_empty() {
@@ -131,8 +134,16 @@ pub fn display_stored_assertions(arxiv_id: &str, assertions: &[StoredAssertion])
     }
 }
 
-/// How many related papers to list per dive node before summarizing the rest.
-const DIVE_RELATED_CAP: usize = 10;
+/// How many related papers to list per dive node. Papers sharing only an arXiv
+/// category are never listed one by one — they are counted, since at corpus scale a
+/// shared category links hundreds of papers and says nothing about their content.
+const DIVE_RELATED_CAP: usize = 5;
+
+/// How many co-asserted concepts to name per related paper before summarizing.
+const DIVE_CONCEPTS_PER_PAPER: usize = 3;
+
+/// Longest query echoed back verbatim.
+const QUERY_ECHO_MAX: usize = 80;
 
 /// How many related entries overflow the display cap, if any (`None` when the
 /// count fits within `cap`).
@@ -140,57 +151,252 @@ fn related_overflow(count: usize, cap: usize) -> Option<usize> {
     (count > cap).then(|| count - cap)
 }
 
+/// A co-assertion weight for display. A surviving edge always has weight > 0; show a
+/// tiny positive weight as "<0.01" rather than rounding it to a misleading "0.00".
+fn format_weight(weight: f64) -> String {
+    if weight > 0.0 && weight < 0.005 {
+        "<0.01".to_string()
+    } else {
+        format!("{weight:.2}")
+    }
+}
+
 fn relation_reason(kind: &RelationKind) -> String {
     match kind {
         RelationKind::SharedCategory(code) => format!("shared category {code}"),
         RelationKind::SharedAuthor(name) => format!("shared author {name}"),
         RelationKind::CoAssertion { term, weight } => {
-            // A surviving edge always has weight > 0; show a tiny positive weight as
-            // "<0.01" rather than rounding it to a misleading "0.00" at 2 decimals.
-            let shown = if *weight > 0.0 && *weight < 0.005 {
-                "<0.01".to_string()
-            } else {
-                format!("{weight:.2}")
-            };
-            format!("co-asserts {term} (w={shown})")
+            format!("co-asserts {term} (w={})", format_weight(*weight))
         }
     }
 }
 
-/// Display a `diver dive` neighborhood: each asserting paper, its matching
-/// claims, and its related papers (bounded per node).
-pub fn display_dive(concept: &str, nodes: &[DiveNode]) {
-    println!("{}", format!("Dive: {concept}").bold());
-    println!();
+fn plural(n: usize, word: &str) -> String {
+    if n == 1 {
+        format!("{n} {word}")
+    } else {
+        format!("{n} {word}s")
+    }
+}
 
-    if nodes.is_empty() {
-        println!(
-            "  {}",
-            format!("No papers assert about '{concept}'. Run `diver extract <id>` first.").dimmed()
-        );
-        return;
+/// A user query as echoed in messages: trimmed and length-capped.
+fn echo_query(term: &str) -> String {
+    let trimmed = term.trim();
+    if trimmed.chars().count() > QUERY_ECHO_MAX {
+        let head: String = trimmed.chars().take(QUERY_ECHO_MAX).collect();
+        format!("{head}…")
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Header lines for a resolved concept: its label, kind and reach, the surface forms
+/// it was formed from, and the concepts linked to it (narrower phrases for a term,
+/// broader constituent terms for a phrase). Plain text, no styling.
+pub fn format_dive_header(info: &ConceptInfo, related: &[ConceptSummary]) -> Vec<String> {
+    let mut lines = vec![format!(
+        "Dive: {} ({}, {})",
+        info.label,
+        info.kind.as_str(),
+        plural(info.paper_count, "paper")
+    )];
+    let forms: Vec<String> = info
+        .forms
+        .iter()
+        .map(|(form, count)| format!("{form} \u{00d7}{count}"))
+        .collect();
+    lines.push(format!("  forms: {}", forms.join(", ")));
+    if !related.is_empty() {
+        let heading = match info.kind {
+            ConceptKind::Term => "narrower",
+            ConceptKind::Phrase => "broader",
+        };
+        let names: Vec<String> = related
+            .iter()
+            .map(|c| format!("{} ({})", c.label, c.paper_count))
+            .collect();
+        lines.push(format!("  {heading}: {}", names.join(", ")));
+    }
+    lines
+}
+
+/// Lines describing a dive node's related papers, grouped per paper and ranked by
+/// [`group_related`]: a one-line summary of how many papers are linked by shared
+/// concepts, by shared authors, and by category alone, then up to
+/// [`DIVE_RELATED_CAP`] papers linked by concepts or authors, each with its title and
+/// its strongest shared concepts. Category-only papers are counted, never listed.
+/// `titles` maps arXiv ids to titles. Plain text, no styling.
+pub fn format_related(
+    related: &[(String, RelationKind)],
+    titles: &HashMap<&str, &str>,
+) -> Vec<String> {
+    let grouped = group_related(related);
+    if grouped.is_empty() {
+        return vec!["(no related papers)".to_string()];
     }
 
+    let via_concepts = grouped.iter().filter(|r| !r.concepts.is_empty()).count();
+    let via_authors = grouped
+        .iter()
+        .filter(|r| r.concepts.is_empty() && !r.authors.is_empty())
+        .count();
+    let category_only: Vec<&RelatedPaper> = grouped.iter().filter(|r| r.category_only()).collect();
+
+    let mut parts = Vec::new();
+    if via_concepts > 0 {
+        parts.push(format!("{via_concepts} by shared concepts"));
+    }
+    if via_authors > 0 {
+        parts.push(format!("{via_authors} by shared authors only"));
+    }
+    if !category_only.is_empty() {
+        // Name the categories doing the linking, most common first.
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for r in &category_only {
+            for code in &r.categories {
+                *counts.entry(code.as_str()).or_insert(0) += 1;
+            }
+        }
+        let mut codes: Vec<(&str, usize)> = counts.into_iter().collect();
+        codes.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        let names: Vec<&str> = codes.iter().take(3).map(|(c, _)| *c).collect();
+        parts.push(format!(
+            "{} sharing only a category ({})",
+            category_only.len(),
+            names.join(", ")
+        ));
+    }
+    let mut lines = vec![format!("Related: {}", parts.join("; "))];
+
+    let listed: Vec<&RelatedPaper> = grouped.iter().filter(|r| !r.category_only()).collect();
+    for r in listed.iter().take(DIVE_RELATED_CAP) {
+        let title = titles
+            .get(r.arxiv_id.as_str())
+            .map(|t| truncate_title(t, 56))
+            .unwrap_or_default();
+        let mut reasons = Vec::new();
+        if !r.concepts.is_empty() {
+            let mut named: Vec<String> = r
+                .concepts
+                .iter()
+                .take(DIVE_CONCEPTS_PER_PAPER)
+                .map(|(c, w)| format!("{c} ({})", format_weight(*w)))
+                .collect();
+            if let Some(more) = related_overflow(r.concepts.len(), DIVE_CONCEPTS_PER_PAPER) {
+                named.push(format!("+{more} more"));
+            }
+            reasons.push(format!("shares {}", named.join(", ")));
+        }
+        for author in &r.authors {
+            reasons.push(relation_reason(&RelationKind::SharedAuthor(author.clone())));
+        }
+        let lead = if title.is_empty() {
+            r.arxiv_id.clone()
+        } else {
+            format!("{}  {title}", r.arxiv_id)
+        };
+        lines.push(format!("  {lead} \u{2014} {}", reasons.join("; ")));
+    }
+    if let Some(more) = related_overflow(listed.len(), DIVE_RELATED_CAP) {
+        lines.push(format!("  (+{more} more linked by concepts or authors)"));
+    }
+    lines
+}
+
+/// Lines for a term that resolves to no concept. With no concepts at all, the
+/// `diver extract` hint; for a query with no searchable words, say so; otherwise a
+/// not-a-concept notice followed by the concepts that contain the term or, failing
+/// that, concepts spelled similarly. Plain text, no styling.
+pub fn format_dive_unresolved(
+    term: &str,
+    has_concepts: bool,
+    suggestions: &[ConceptSummary],
+    similar: &[ConceptSummary],
+) -> Vec<String> {
+    let shown = echo_query(term);
+    let mut lines = vec![format!("Dive: {shown}")];
+    if !has_concepts {
+        lines.push(
+            "  No concepts yet: run `diver extract <id>` or `diver extract --all` first."
+                .to_string(),
+        );
+    } else if query_key(term).is_none() {
+        lines.push(format!(
+            "  '{shown}' has no searchable words (only common words, numbers or short tokens)."
+        ));
+    } else if !suggestions.is_empty() {
+        lines.push(format!(
+            "  '{shown}' is not a concept in this corpus. Concepts containing it:"
+        ));
+        for c in suggestions {
+            lines.push(format!(
+                "    {} ({})",
+                c.label,
+                plural(c.paper_count, "paper")
+            ));
+        }
+    } else if !similar.is_empty() {
+        lines.push(format!(
+            "  '{shown}' is not a concept in this corpus. Did you mean:"
+        ));
+        for c in similar {
+            lines.push(format!(
+                "    {} ({})",
+                c.label,
+                plural(c.paper_count, "paper")
+            ));
+        }
+    } else {
+        lines.push(format!(
+            "  '{shown}' is not a concept in this corpus, and nothing contains or resembles it."
+        ));
+    }
+    lines
+}
+
+/// Display a resolved `diver dive`: the concept header, then each asserting paper,
+/// its claims about the concept, and its related papers (grouped and bounded per
+/// node). `facts` supplies the related papers' titles.
+pub fn display_dive_concept(
+    info: &ConceptInfo,
+    related: &[ConceptSummary],
+    nodes: &[DiveNode],
+    facts: &[SourceFact],
+) {
+    let header = format_dive_header(info, related);
+    println!("{}", header[0].bold());
+    for line in &header[1..] {
+        println!("{}", line.dimmed());
+    }
+    println!();
+
+    let titles: HashMap<&str, &str> = facts
+        .iter()
+        .map(|f| (f.arxiv_id.as_str(), f.title.as_str()))
+        .collect();
     for node in nodes {
         println!("{}  {}", node.arxiv_id.bold(), node.title);
         for claim in &node.claims {
             println!("  \u{2022} {claim}");
         }
-        if node.related.is_empty() {
-            println!("    {}", "(no related papers)".dimmed());
-        } else {
-            println!("    {}", "Related:".dimmed());
-            for (other, kind) in node.related.iter().take(DIVE_RELATED_CAP) {
-                println!(
-                    "      {}",
-                    format!("{other} \u{2014} {}", relation_reason(kind)).dimmed()
-                );
-            }
-            if let Some(more) = related_overflow(node.related.len(), DIVE_RELATED_CAP) {
-                println!("      {}", format!("(+{more} more)").dimmed());
-            }
+        for line in format_related(&node.related, &titles) {
+            println!("    {}", line.dimmed());
         }
         println!();
+    }
+}
+
+/// Display a `diver dive` whose term resolves to no concept.
+pub fn display_dive_unresolved(
+    term: &str,
+    has_concepts: bool,
+    suggestions: &[ConceptSummary],
+    similar: &[ConceptSummary],
+) {
+    let lines = format_dive_unresolved(term, has_concepts, suggestions, similar);
+    println!("{}", lines[0].bold());
+    for line in &lines[1..] {
+        println!("{line}");
     }
 }
 
@@ -556,5 +762,113 @@ mod tests {
     fn test_display_collect_empty() {
         let msg = "No papers found.";
         assert_eq!(msg, "No papers found.");
+    }
+
+    #[test]
+    fn test_format_dive_concept() {
+        let summary = |id: &str, kind, paper_count| ConceptSummary {
+            id: id.to_string(),
+            label: id.to_string(),
+            kind,
+            paper_count,
+        };
+
+        // Term header: label, kind, reach, forms, narrower phrases.
+        let term = ConceptInfo {
+            id: "network".into(),
+            label: "networks".into(),
+            kind: ConceptKind::Term,
+            paper_count: 6,
+            forms: vec![("networks".into(), 5), ("network".into(), 5)],
+        };
+        let lines =
+            format_dive_header(&term, &[summary("neural networks", ConceptKind::Phrase, 4)]);
+        assert_eq!(lines[0], "Dive: networks (term, 6 papers)");
+        assert_eq!(lines[1], "  forms: networks \u{00d7}5, network \u{00d7}5");
+        assert_eq!(lines[2], "  narrower: neural networks (4)");
+
+        // Phrase header: broader constituent terms.
+        let phrase = ConceptInfo {
+            id: "attention mechanism".into(),
+            label: "attention mechanism".into(),
+            kind: ConceptKind::Phrase,
+            paper_count: 1,
+            forms: vec![("attention mechanism".into(), 1)],
+        };
+        let lines = format_dive_header(&phrase, &[summary("attention", ConceptKind::Term, 6)]);
+        assert_eq!(lines[0], "Dive: attention mechanism (phrase, 1 paper)");
+        assert_eq!(lines[2], "  broader: attention (6)");
+
+        // Unresolved: suggestions, then "did you mean", then the empty-corpus hint.
+        let with = format_dive_unresolved(
+            "model",
+            true,
+            &[summary("diffusion model", ConceptKind::Phrase, 6)],
+            &[],
+        );
+        assert!(with[1].contains("'model' is not a concept") && with[1].contains("containing"));
+        assert_eq!(with[2], "    diffusion model (6 papers)");
+        let similar = format_dive_unresolved(
+            "atention",
+            true,
+            &[],
+            &[summary("attention", ConceptKind::Term, 35)],
+        );
+        assert!(similar[1].contains("Did you mean"));
+        assert_eq!(similar[2], "    attention (35 papers)");
+        let none = format_dive_unresolved("zyxw", true, &[], &[]);
+        assert!(none[1].contains("nothing contains or resembles it"));
+        let stop = format_dive_unresolved("the", true, &[], &[]);
+        assert!(stop[1].contains("no searchable words"));
+        let empty = format_dive_unresolved("anything", false, &[], &[]);
+        assert!(empty[1].contains("diver extract"));
+
+        // Related: one summary line; category-only papers counted, never listed.
+        let co = |term: &str, weight| RelationKind::CoAssertion {
+            term: term.to_string(),
+            weight,
+        };
+        let related = vec![
+            ("2302.00002".to_string(), co("attention", 0.83)),
+            (
+                "2303.00003".to_string(),
+                RelationKind::SharedCategory("cs.LG".into()),
+            ),
+            (
+                "2304.00004".to_string(),
+                RelationKind::SharedAuthor("Ada".into()),
+            ),
+        ];
+        let titles: HashMap<&str, &str> = [("2302.00002", "Paper B")].into_iter().collect();
+        let lines = format_related(&related, &titles);
+        assert_eq!(
+            lines[0],
+            "Related: 1 by shared concepts; 1 by shared authors only; \
+             1 sharing only a category (cs.LG)"
+        );
+        assert_eq!(
+            lines[1],
+            "  2302.00002  Paper B \u{2014} shares attention (0.83)"
+        );
+        assert_eq!(lines[2], "  2304.00004 \u{2014} shared author Ada");
+        assert_eq!(lines.len(), 3, "the category-only paper is not listed");
+        assert_eq!(format_related(&[], &titles), vec!["(no related papers)"]);
+
+        // At most five linked papers are listed; the rest are summarized.
+        let many: Vec<(String, RelationKind)> = (0..7)
+            .map(|i| (format!("2400.0000{i}"), co("attention", 0.5)))
+            .collect();
+        let lines = format_related(&many, &titles);
+        assert_eq!(lines.len(), 1 + DIVE_RELATED_CAP + 1);
+        assert_eq!(
+            lines.last().unwrap(),
+            "  (+2 more linked by concepts or authors)"
+        );
+
+        // A long query is echoed truncated, with an ellipsis.
+        let long = "attention ".repeat(20);
+        let echoed = &format_dive_unresolved(&long, true, &[], &[])[0];
+        assert_eq!(echoed.chars().count(), "Dive: ".len() + QUERY_ECHO_MAX + 1);
+        assert!(echoed.ends_with('\u{2026}'));
     }
 }

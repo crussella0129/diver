@@ -79,3 +79,25 @@ test critic found the original version of that test did **not** catch it.
   nowhere to run meaningfully.
 - **Backlog carried forward, untouched this sprint:** T-1310, T-1410, T-1510
   (T-1710 is now absorbed by INT-0020).
+
+## Erratum (recorded 2026-09-21, Sprint 19 research)
+
+Two statements above are wrong. They are left in place, and corrected here, so the
+record shows what was claimed as well as what was true.
+
+1. **"CI status: not-configured" / "CI not configured — local only" / "No CI."** False.
+   `.github/workflows/rust.yml` (`cargo build` + `cargo test` on `ubuntu-latest`,
+   triggered by pull requests to and pushes on `main`) was in the `dev` tree for all of
+   Sprint 18. It ran on the Sprint 18 checkpoint, PR #18
+   ([run 33626071648](https://github.com/crussella0129/diver/actions/runs/33626071648)):
+   **success**, 142 tests, including both `DIVER_DB` tests. The claim was carried over
+   from Sprint 17's report without being checked.
+2. **"No CI … is the reason the clean-machine guard above has nowhere to run
+   meaningfully."** Also false. That CI run executed
+   `test_cli_diver_db_override_leaves_default_db_unmodified` on a fresh runner
+   (`/home/runner`), where no default corpus exists — so its guarded branch almost
+   certainly ran and held. "Almost certainly", because the test does not report which
+   branch it took.
+
+What remains true: CI does not run on `dev`, so the tested head in this report was
+verified locally only, and CI runs neither `clippy` nor `fmt`.

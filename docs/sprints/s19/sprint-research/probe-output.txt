@@ -1,0 +1,159 @@
+papers with claims: 13   claims: 89
+stoplist: 303 common + 230 filler = 525
+
+== 1. substring (LIKE) matches vs whole-token matches ==
+  'attention'     substring= 15 exact-token= 14 substring-only=  1  via: ['attentional']
+  'translation'   substring= 18 exact-token= 18 substring-only=  0  via: []
+  'art'           substring= 13 exact-token=  6 substring-only=  7  via: ['apart', 'counterpart', 'partial', 'particular', 'parts', 'starts']
+  'net'           substring= 12 exact-token=  1 substring-only= 11  via: ['imagenet', 'magnetic', 'network', 'networks']
+  'network'       substring=  9 exact-token=  5 substring-only=  4  via: ['networks']
+  'transformer'   substring= 15 exact-token= 15 substring-only=  0  via: []
+  'transformers'  substring=  0 exact-token=  0 substring-only=  0  via: []
+  'diffusion'     substring= 27 exact-token= 27 substring-only=  0  via: []
+  'model'         substring= 46 exact-token= 18 substring-only= 28  via: ['modeling', 'models']
+  'gan'           substring=  2 exact-token=  0 substring-only=  2  via: ['organized', 'organizing']
+  'rnn'           substring=  1 exact-token=  0 substring-only=  1  via: ['rnns']
+  'bleu'          substring=  6 exact-token=  6 substring-only=  0  via: []
+  'image'         substring= 24 exact-token= 15 substring-only=  9  via: ['imagenet', 'images']
+
+== 2. singular/plural pairs both present in the corpus ==
+  model              df=10  models               df=10  union df=12 (stopped)
+  image              df= 7  images               df= 4  union df= 8 
+  method             df= 4  methods              df= 5  union df= 7 (stopped)
+  network            df= 3  networks             df= 4  union df= 6 
+  paper              df= 5  papers               df= 1  union df= 6 (stopped)
+  score              df= 1  scores               df= 4  union df= 5 (stopped)
+  mechanism          df= 3  mechanisms           df= 4  union df= 5 (stopped)
+  work               df= 4  works                df= 1  union df= 5 (stopped)
+  language           df= 5  languages            df= 2  union df= 5 
+  architecture       df= 3  architectures        df= 2  union df= 4 
+  parameter          df= 4  parameters           df= 2  union df= 4 
+  task               df= 2  tasks                df= 3  union df= 4 (stopped)
+  introduce          df= 3  introduces           df= 1  union df= 4 (stopped)
+  outperform         df= 1  outperforms          df= 3  union df= 4 (stopped)
+  achieve            df= 2  achieves             df= 2  union df= 4 (stopped)
+  present            df= 2  presents             df= 1  union df= 3 (stopped)
+  feature            df= 1  features             df= 2  union df= 3 (stopped)
+  challenge          df= 1  challenges           df= 2  union df= 3 (stopped)
+  point              df= 1  points               df= 2  union df= 3 
+  generate           df= 2  generates            df= 1  union df= 3 
+  benchmark          df= 3  benchmarks           df= 1  union df= 3 (stopped)
+  distribution       df= 1  distributions        df= 1  union df= 2 
+  detail             df= 1  details              df= 2  union df= 2 (stopped)
+  resolution         df= 2  resolutions          df= 1  union df= 2 
+  project            df= 2  projects             df= 1  union df= 2 
+  require            df= 1  requires             df= 1  union df= 2 (stopped)
+  support            df= 1  supports             df= 1  union df= 2 
+  review             df= 2  reviews              df= 1  union df= 2 
+  direction          df= 1  directions           df= 2  union df= 2 
+  head               df= 2  heads                df= 1  union df= 2 
+  component          df= 1  components           df= 1  union df= 2 (stopped)
+  perform            df= 1  performs             df= 1  union df= 2 (stopped)
+  one                df= 1  ones                 df= 1  union df= 2 (stopped)
+  technique          df= 1  techniques           df= 1  union df= 2 (stopped)
+  representation     df= 1  representations      df= 1  union df= 2 (stopped)
+  object             df= 1  objects              df= 1  union df= 1 
+  detector           df= 1  detectors            df= 1  union df= 1 
+  condition          df= 1  conditions           df= 1  union df= 1 (stopped)
+  lead               df= 1  leads                df= 1  union df= 1 
+  system             df= 1  systems              df= 1  union df= 1 (stopped)
+  -> 40 pairs
+
+== 3. adjacent two-word phrases, df >= 2 papers ==
+
+  rule=strict: 351 distinct phrases, 14 with df>=2
+     6  machine translation
+     4  neural machine
+     4  neural networks
+     3  convolutional neural
+     3  text guided
+     2  brief introduction
+     2  denoising diffusion
+     2  encoder decoder
+     2  french translation
+     2  head attention
+     2  image generation
+     2  multi head
+     2  project page
+     2  visual generation
+
+  rule=split: 547 distinct phrases, 31 with df>=2
+     6  diffusion models
+     6  machine translation
+     4  neural machine
+     4  neural networks
+     3  attention mechanism
+     3  attention mechanisms
+     3  bleu scores
+     3  convolutional neural
+     3  diffusion model
+     3  pre trained
+     3  text guided
+     3  transformer based
+     2  brief introduction
+     2  demonstrated superior
+     2  denoising diffusion
+     2  encoder decoder
+     2  french translation
+     2  head attention
+     2  image generation
+     2  model establishes
+     2  multi head
+     2  multiple languages
+     2  page https
+     2  parameter efficient
+     2  project page
+     2  trained text
+     2  transformer model
+     2  translation model
+     2  translation task
+     2  translation tasks
+     2  visual generation
+
+== 4. rule=head (+web tokens break, +plural folding) ==
+  444 distinct phrase keys, 25 with df>=2
+     6  diffusion model              forms=['diffusion model', 'diffusion models']
+     6  machine translation          forms=['machine translation']
+     4  attention mechanism          forms=['attention mechanism', 'attention mechanisms']
+     4  bleu score                   forms=['bleu score', 'bleu scores']
+     4  neural machine               forms=['neural machine']
+     4  neural network               forms=['neural networks']
+     3  convolutional neural         forms=['convolutional neural']
+     3  pre trained                  forms=['pre trained']
+     3  text guided                  forms=['text guided']
+     3  transformer based            forms=['transformer based']
+     3  translation task             forms=['translation task', 'translation tasks']
+     2  brief introduction           forms=['brief introduction']
+     2  denoising diffusion          forms=['denoising diffusion']
+     2  encoder decoder              forms=['encoder decoder']
+     2  french translation           forms=['french translation']
+     2  head attention               forms=['head attention']
+     2  image generation             forms=['image generation']
+     2  multi head                   forms=['multi head']
+     2  parameter efficient          forms=['parameter efficient']
+     2  project page                 forms=['project page']
+     2  target language              forms=['target language', 'target languages']
+     2  transformer architecture     forms=['transformer architecture', 'transformer architectures']
+     2  transformer model            forms=['transformer model']
+     2  translation model            forms=['translation model', 'translation models']
+     2  visual generation            forms=['visual generation']
+
+== 5. unigram concepts: 505 keys; 18 fold >1 surface form ==
+    df= 8  image            <- ['image', 'images']
+    df= 6  network          <- ['network', 'networks']
+    df= 5  language         <- ['language', 'languages']
+    df= 4  architecture     <- ['architecture', 'architectures']
+    df= 4  parameter        <- ['parameter', 'parameters']
+    df= 3  generate         <- ['generate', 'generates']
+    df= 3  point            <- ['point', 'points']
+    df= 2  distribution     <- ['distribution', 'distributions']
+    df= 2  project          <- ['project', 'projects']
+    df= 2  resolution       <- ['resolution', 'resolutions']
+    df= 2  support          <- ['support', 'supports']
+    df= 2  review           <- ['review', 'reviews']
+    df= 2  direction        <- ['direction', 'directions']
+    df= 2  head             <- ['head', 'heads']
+    df= 1  object           <- ['object', 'objects']
+    df= 1  detector         <- ['detector', 'detectors']
+    df= 1  lead             <- ['lead', 'leads']
+    df= 1  family           <- ['families', 'family']

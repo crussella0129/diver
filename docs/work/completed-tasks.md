@@ -391,3 +391,38 @@
 - **Touched:** README.md (new `### Corpus location (DIVER_DB)` under "Building a corpus", where the other env-var configuration lives — not the pre-Sprint-5 `## Database compatibility` migration warning)
 - **Commit:** `95fad05d9ae211ae9fc7acd74fc9d9117efaeef7`
 
+## T-1901 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/concept.rs (new: stoplist loading with comment support, significant_terms, and its two tests moved verbatim), diver-core/src/stopwords_common.txt (new, 308 words incl. web tokens and the 8 doubly-listed words), diver-core/src/stopwords_filler.txt (new, 217), diver-core/src/stopwords.txt (deleted), diver-core/src/graph.rs, diver-core/src/lib.rs, docs/intents/INT-0020-first-class-concepts.md, docs/intents/README.md. One-off check: union 525 == pre-split vocabulary 525, disjoint.
+- **Commit:** `d03ef16a75a6b9f9115b25b5aa72288c45f912cf`
+
+## T-1902 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/concept.rs (fold, folded classification, clause-bounded phrase candidates, form_concepts/ConceptSet/Concept/ConceptKind, query_key, digest_words/rules_digest, CONCEPT_FORMATION_VERSION). Boundary check via proving-ground probe on a copy of the real 13-paper corpus: 522 concepts (497 terms, 25 phrases, matching research), 0 subset-invariant violations, twice-equal and reversed-equal-after-remap both true.
+- **Commit:** `0cad000c93fb16ed722df9b7ac269183dcaecfe5`
+
+## T-1903 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/store.rs (concept tables concepts/concept_forms/assertion_concepts/meta; fingerprint + ensure_concepts_fresh + full rebuild under BEGIN IMMEDIATE; resolve_concept, claims_for_concept, concepts_related_to, concept_suggestions, concept_count, ConceptInfo/ConceptSummary; papers_asserting resolves through concepts; test_papers_asserting_escapes_like_wildcards replaced by test_papers_asserting_wildcards_inert). Boundary check via probe on a copy of the real corpus: upgrade path builds tables and 522 concepts on first read (7.6 ms); networks/network resolve alike to 6 papers; gan/net/art unresolved; model suggests diffusion models/transformer model/translation model; papers_asserting == claims_for_concept for every resolved query; a saved claim resolves on the next read and stops resolving after removal.
+- **Commit:** `1440ab59b5cc23a5c6e340629ce45477eab56b8b`
+
+## T-1904 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-core/src/graph.rs (compute_coassertion_relations re-keyed onto form_concepts with phrase subsumption and a paper index; doc comment updated for concepts and the refined t = 1.0 endpoint; two bag-of-words fixtures gained comma separators, assertions unchanged — verified first that exactly those three tests failed for the predicted reason). Boundary check via probe on the real corpus: edges t0/t0.5/t1 = 60/189/305, monotonic, 0 subsumption violations, network edges single-labelled; the hidden-state counterexample is monotonic.
+- **Commit:** `62bd5070a9d43602f8b314f8287c1b8df4a5d971`
+
+## T-1905 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** diver-cli/src/main.rs (dive resolves via resolve_concept, then claims_for_concept/concepts_related_to; unresolved branch on concept_count/concept_suggestions; concept and --temperature help text), diver-core/src/display.rs (format_dive_header, format_dive_unresolved, display_dive_concept, display_dive_unresolved replace display_dive). Boundary check with the release binary on a copy of the real corpus: dive networks -> network (6 papers, both forms, narrower neural networks); dive model -> suggestions; dive gan -> not a concept; empty DIVER_DB -> extract hint; --help states the new semantics; live ingest+extract of 2006.11239 between two dives appears in the second (2 -> 3 papers). Drive finding logged for later: related lists are dominated by shared-category edges.
+- **Commit:** `77cff11ddc1805dc96e75581fe2b8b312689c8d6`
+
+## T-1906 — (sprint 19)
+- **Intent:** [INT-0020](../intents/INT-0020-first-class-concepts.md)
+- **Completed:** 2026-09-24
+- **Touched:** README.md (dive section rewritten: concepts — words with plural folding, shared two-word phrases linked narrower/broader, filler never alone, unresolved suggestions, no substring matching and the attention/attentional change; edges incl. phrase subsumption; --temperature 1.0 restated; no remaining 'every shared term' text).
+- **Commit:** `b54a126ae5b7da12f257567c1ec2cbb74b42a439`

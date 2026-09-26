@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -6,7 +8,9 @@ use diver_core::client::ArxivClient;
 use diver_core::display;
 use diver_core::extract::LlmExtractor;
 use diver_core::fact::SourceFact;
-use diver_core::graph::{build_dive, compute_coassertion_relations, compute_relations};
+use diver_core::graph::{
+    build_dive, compute_coassertion_relations_touching, compute_relations_touching,
+};
 use diver_core::observation::extract_observations;
 use diver_core::query::{QueryBuilder, SortBy};
 use diver_core::store::Store;
@@ -69,12 +73,15 @@ enum Commands {
 
     /// Explore a concept: papers that assert about it and how they connect
     Dive {
-        /// Concept to explore (matched against stored assertion claims)
+        /// Concept to explore, resolved to a concept formed from stored claims:
+        /// plural forms are one concept, and two-word phrases shared by at least two
+        /// papers are concepts too. Unresolved terms list concepts containing them
         concept: String,
 
         /// How permissive co-assertion linking is, in [0.0, 1.0]: 0.0 links only
-        /// rare/distinctive shared claim terms, 1.0 links every shared term.
-        /// Structural (category/author) edges are unaffected.
+        /// rare/distinctive shared concepts; 1.0 links every shared concept except
+        /// words subsumed by a phrase the same papers share. Structural
+        /// (category/author) edges are unaffected.
         #[arg(long, default_value_t = 0.5, value_parser = parse_temperature)]
         temperature: f64,
     },
@@ -211,18 +218,42 @@ async fn main() -> Result<()> {
             temperature,
         } => {
             let store = Store::open()?;
-            let asserting = store.papers_asserting(&concept)?;
-            if asserting.is_empty() {
-                display::display_dive(&concept, &[]);
-            } else {
-                let facts = store.list()?;
-                let mut relations = compute_relations(&facts);
-                relations.extend(compute_coassertion_relations(
-                    &store.all_claims()?,
-                    temperature,
-                ));
-                let nodes = build_dive(&facts, &asserting, &relations);
-                display::display_dive(&concept, &nodes);
+            match store.resolve_concept(&concept)? {
+                Some(info) => {
+                    let asserting = store.claims_for_concept(&info.id)?;
+                    let related = store.concepts_related_to(&info.id)?;
+                    let facts = store.list()?;
+                    // Only edges touching the papers this dive shows are needed.
+                    let seeds: HashSet<&str> =
+                        asserting.iter().map(|(id, _)| id.as_str()).collect();
+                    let mut relations = compute_relations_touching(&facts, &seeds);
+                    relations.extend(compute_coassertion_relations_touching(
+                        &store.all_claims()?,
+                        temperature,
+                        &seeds,
+                    ));
+                    let nodes = build_dive(&facts, &asserting, &relations);
+                    display::display_dive_concept(&info, &related, &nodes, &facts);
+                }
+                None => {
+                    let has_concepts = store.concept_count()? > 0;
+                    let suggestions = if has_concepts {
+                        store.concept_suggestions(&concept)?
+                    } else {
+                        Vec::new()
+                    };
+                    let similar = if has_concepts && suggestions.is_empty() {
+                        store.similar_concepts(&concept)?
+                    } else {
+                        Vec::new()
+                    };
+                    display::display_dive_unresolved(
+                        &concept,
+                        has_concepts,
+                        &suggestions,
+                        &similar,
+                    );
+                }
             }
         }
 
